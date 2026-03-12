@@ -4,14 +4,15 @@ import (
 	"common/pkg/auth"
 	"common/pkg/errors"
 	"common/pkg/logging"
+	"common/pkg/permission"
 	"context"
 	stderrors "errors"
 	"log"
 	"net/http"
-	"user-service/internal/validator"
 
 	"user-service/internal/config"
 	"user-service/internal/handler"
+	"user-service/internal/validator"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -41,28 +42,28 @@ func InitRouter(r *gin.Engine) {
 }
 
 func SetupRoutes(r *gin.Engine, healthHandler *handler.HealthHandler, empHandler *handler.EmployeeHandler, verifier auth.TokenVerifier, permissions auth.PermissionProvider) {
-	r.GET("/health", healthHandler.Health)
-	r.POST("/register", empHandler.Register)
-	r.POST("/login", empHandler.Login)
-	r.POST("/activate", empHandler.Activate)
-	r.GET("/employees", empHandler.ListEmployees)
-	r.PATCH("/employees/:id", empHandler.UpdateEmployee)
+	api := r.Group("/api")
+	{
+		api.GET("/health", healthHandler.Health)
 
-	r.POST("/forgot-password", empHandler.ForgotPassword)
-	r.POST("/reset-password", empHandler.ResetPassword)
+		emp := api.Group("/employees")
+		{
+			emp.POST("/login", empHandler.Login)
+			emp.POST("/activate", empHandler.Activate)
 
-	// TODO: Add protected routes and order routes into groups
-	// Example: protected routes with auth middleware
-	// protected := r.Group("/")
-	// protected.Use(auth.Middleware(verifier, provider))
-	// {
-	// 	protected.GET("/employees", auth.RequirePermission(permission.EmployeeView), empHandler.ListEmployees)
-	// 	protected.PATCH("/employees/:id", auth.RequirePermission(permission.EmployeeUpdate), empHandler.UpdateEmployee)
-	// }
-	// Zaštićene rute - zahtevaju JWT
-	authorized := r.Group("/")
-	authorized.Use(auth.Middleware(verifier, permissions))
-	authorized.POST("/change-password", empHandler.ChangePassword)
+			emp.POST("/forgot-password", empHandler.ForgotPassword)
+			emp.POST("/reset-password", empHandler.ResetPassword)
+
+			protected := emp.Group("/")
+			protected.Use(auth.Middleware(verifier, permissions))
+			{
+				protected.POST("/register", auth.RequirePermission(permission.EmployeeCreate) ,empHandler.Register)
+				protected.PATCH("/:id", auth.RequirePermission(permission.EmployeeUpdate), empHandler.UpdateEmployee)
+				protected.GET("/", auth.RequirePermission(permission.EmployeeView), empHandler.ListEmployees)
+				protected.POST("/change-password", empHandler.ChangePassword)
+			}
+		}
+	}
 }
 
 func RegisterServerLifecycle(lc fx.Lifecycle, server *http.Server) {

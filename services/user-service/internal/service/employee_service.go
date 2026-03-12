@@ -132,7 +132,7 @@ func (s *EmployeeService) ActivateAccount(ctx context.Context, tokenStr, passwor
 		return errors.InternalErr(err)
 	}
 	if employee == nil {
-		return errors.ConflictErr("employee not found")
+		return errors.NotFoundErr("employee not found")
 	}
 
 	// Hash lozinke
@@ -377,12 +377,12 @@ func (s *EmployeeService) ConfirmChangePassword(ctx context.Context, oldPassword
 	userID := authCtx.UserID
 	// ako je nova ista kao stara
 	if oldPassword == newPassword {
-		return errors.BadRequestErr("new password cannot be the same one")
+		return errors.BadRequestErr("new password cannot be the same as the old one")
 	}
 	//ako korisnik postoji
 	employee, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
-		return err
+		return errors.InternalErr(err)
 	}
 	if employee == nil {
 		return errors.UnauthorizedErr("invalid credentials")
@@ -398,6 +398,10 @@ func (s *EmployeeService) ConfirmChangePassword(ctx context.Context, oldPassword
 	}
 
 	employee.Password = string(hashedPassword)
+	
+	if err := s.repo.Update(ctx, employee); err != nil {
+		return errors.InternalErr(err)
+	}
 
-	return s.repo.Update(ctx, employee)
+	return nil
 }
