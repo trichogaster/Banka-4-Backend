@@ -377,7 +377,7 @@ func (s *EmployeeService) Login(ctx context.Context, req *dto.LoginRequest) (*dt
 }
 
 // dodata funkcija za rotaciju tokena, kad se refresh token iskoristi vraca se novi refresh jer ce stari isteci pre roka (vec je akttivan timer za taj token)
-func (s *EmployeeService) RefreshToken(ctx context.Context, refreshTokenStr string) (*dto.LoginResponse, error) {
+func (s *EmployeeService) RefreshToken(ctx context.Context, refreshTokenStr string) (*dto.RefreshResponse, error) {
 	storedToken, err := s.refreshTokenRepo.FindByToken(ctx, refreshTokenStr)
 	if err != nil {
 		return nil, errors.InternalErr(err)
@@ -386,7 +386,6 @@ func (s *EmployeeService) RefreshToken(ctx context.Context, refreshTokenStr stri
 		return nil, errors.UnauthorizedErr("invalid or expired refresh token")
 	}
 	if storedToken.ExpiresAt.Before(time.Now()) {
-		_ = s.refreshTokenRepo.DeleteByEmployeeID(ctx, storedToken.EmployeeID)
 		return nil, errors.UnauthorizedErr("refresh token expired")
 	}
 
@@ -424,7 +423,7 @@ func (s *EmployeeService) RefreshToken(ctx context.Context, refreshTokenStr stri
 		return nil, errors.InternalErr(err)
 	}
 
-	return &dto.LoginResponse{
+	return &dto.RefreshResponse{
 		Token:        newAccessToken,
 		RefreshToken: newRawRefresh,
 	}, nil
