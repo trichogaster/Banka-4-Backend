@@ -48,7 +48,6 @@ func NewEmployeeService(
 }
 
 func (s *EmployeeService) Register(ctx context.Context, req *dto.CreateEmployeeRequest) (*model.Employee, error) {
-
 	existing, err := s.repo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, errors.InternalErr(err)
@@ -62,8 +61,18 @@ func (s *EmployeeService) Register(ctx context.Context, req *dto.CreateEmployeeR
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
+
 	if existingByUsername != nil {
 		return nil, errors.ConflictErr("username already in use")
+	}
+
+	positionValid, err := s.positionRepo.Exists(ctx, req.PositionID)
+	if err != nil {
+		return nil, errors.InternalErr(err)
+	}
+
+	if !positionValid {
+		return nil, errors.BadRequestErr("invalid position id")
 	}
 
 	employee := &model.Employee{
