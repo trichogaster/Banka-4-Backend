@@ -22,12 +22,9 @@ services:
       dockerfile: docker/Dockerfile-dev
     ports:
       - "${PORT}:${PORT}"
+    env_file: .env
     environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      DB_NAME: ${DB_NAME}
+      AIR_CONFIG_PATH: /app/services/user-service/.air.toml
     depends_on:
       user_service_db:
         condition: service_healthy
@@ -37,6 +34,20 @@ services:
       - .:/app:Z
       - /app/tmp
       - /go/pkg/mod
+    working_dir: /app/services/user-service
+
+  maildev:
+    image: maildev/maildev:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "1080:1080"
+    environment:
+      MAILDEV_SMTP_PORT: 1025
+      MAILDEV_WEB_PORT: 1080
+    volumes:
+      - maildev_data:/data
 
 volumes:
   user_service_db_data:
+  maildev_data:
