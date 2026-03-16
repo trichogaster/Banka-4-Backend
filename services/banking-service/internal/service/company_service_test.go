@@ -17,11 +17,25 @@ import (
 // ── Fakes ─────────────────────────────────────────────────────────────────────
 
 type fakeCompanyRepo struct {
+	exists    bool
+	existsErr error
 	createErr error
 }
 
 func (r *fakeCompanyRepo) Create(_ context.Context, _ *model.Company) error {
 	return r.createErr
+}
+
+func (r *fakeCompanyRepo) RegistrationNumberExists(_ context.Context, _ string) (bool, error) {
+	return r.exists, r.existsErr
+}
+
+func (r *fakeCompanyRepo) TaxNumberExists(_ context.Context, _ string) (bool, error) {
+	return r.exists, r.existsErr
+}
+
+func (r *fakeCompanyRepo) WorkCodeExists(_ context.Context, _ uint) (bool, error) {
+	return r.exists, r.existsErr
 }
 
 type fakeUserClient struct {
