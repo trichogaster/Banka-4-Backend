@@ -48,8 +48,11 @@ func main() {
 			},
 			handler.NewHealthHandler,
 			repository.NewAccountRepository,
+			repository.NewCompanyRepository,
 			service.NewAccountService,
+			service.NewCompanyService,
 			handler.NewAccountHandler,
+			handler.NewCompanyHandler,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)

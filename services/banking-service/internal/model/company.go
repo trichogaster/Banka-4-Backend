@@ -1,13 +1,16 @@
 package model
 
-import "gorm.io/gorm"
-
 type Company struct {
+	CompanyID          uint   `gorm:"primaryKey"`
 	Name               string `gorm:"not null"`
+
 	RegistrationNumber string `gorm:"uniqueIndex;not null;size:8"`
 	TaxNumber          string `gorm:"uniqueIndex;not null;size:9"`
-	ActivityCodeID     uint
-	WorkCode           *WorkCode `gorm:"foreignKey:ActivityCodeID"`
+
+	WorkCodeID         uint   `gorm:"index;not null;"`
+	WorkCode           WorkCode
+
 	Address            string
-	OwnerID            uint `gorm:"not null"`
+
+	OwnerID            uint   `gorm:"not null"`
 }

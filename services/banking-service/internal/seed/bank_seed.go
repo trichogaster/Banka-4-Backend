@@ -155,13 +155,13 @@ func Run(db *gorm.DB) error {
 				log.Printf("failed to create currency %s: %v", c.Code, err)
 				return err
 			}
-			currencyMap[c.Code] = c.ID
+			currencyMap[c.Code] = c.CurrencyID
 			log.Printf("created currency: %s", c.Code)
 		} else if err != nil {
 			log.Printf("failed to query currency %s: %v", c.Code, err)
 			return err
 		} else {
-			currencyMap[existing.Code] = existing.ID
+			currencyMap[existing.Code] = existing.CurrencyID
 		}
 	}
 
@@ -175,13 +175,13 @@ func Run(db *gorm.DB) error {
 				log.Printf("failed to create work code %s: %v", w.Code, err)
 				return err
 			}
-			workCodeMap[w.Code] = w.ID
+			workCodeMap[w.Code] = w.WorkCodeID
 			log.Printf("created work code: %s", w.Code)
 		} else if err != nil {
 			log.Printf("failed to query work code %s: %v", w.Code, err)
 			return err
 		} else {
-			workCodeMap[existing.Code] = existing.ID
+			workCodeMap[existing.Code] = existing.WorkCodeID
 			log.Printf("work code already exists: %s", w.Code)
 		}
 	}
@@ -197,7 +197,7 @@ func Run(db *gorm.DB) error {
 				TaxNumber:          c.TaxNumber,
 				Address:            c.Address,
 				OwnerID:            c.OwnerID,
-				ActivityCodeID:     workCodeMap[c.WorkCodeCode],
+				WorkCodeID:     workCodeMap[c.WorkCodeCode],
 			}
 			if err := db.Create(&company).Error; err != nil {
 				log.Printf("failed to create company %s: %v", c.Name, err)

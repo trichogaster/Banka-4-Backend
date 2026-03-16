@@ -142,7 +142,7 @@ func (s *AccountService) Create(ctx context.Context, req dto.CreateAccountReques
 		Balance:          req.InitialBalance,
 		AvailableBalance: req.InitialBalance,
 		ExpiresAt:        req.ExpiresAt,
-		CurrencyID:       currency.ID,
+		CurrencyID:       currency.CurrencyID,
 		AccountType:      req.AccountType,
 		AccountKind:      req.AccountKind,
 		Subtype:          req.Subtype,
