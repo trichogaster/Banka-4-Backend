@@ -30,7 +30,7 @@ func (s *UserService) GetClientById(ctx context.Context, req *pb.GetClientByIdRe
 	return &pb.GetClientByIdResponse{
 		Id:    uint64(client.ClientID),
 		Email: client.Identity.Email,
-		Name:  client.FirstName + " " + client.LastName,
+		FullName:  client.FirstName + " " + client.LastName,
 	}, nil
 }
 
@@ -45,6 +45,6 @@ func (s *UserService) GetEmployeeById(ctx context.Context, req *pb.GetEmployeeBy
 	return &pb.GetEmployeeByIdResponse{
 		Id:    uint64(employee.EmployeeID),
 		Email: employee.Identity.Email,
-		Name:  employee.FirstName + " " + employee.LastName,
+		FullName:  employee.FirstName + " " + employee.LastName,
 	}, nil
 }

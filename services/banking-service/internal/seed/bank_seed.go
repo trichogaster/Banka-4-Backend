@@ -75,7 +75,7 @@ var accounts = []struct {
 	EmployeeID    uint
 	Balance       float64
 	ExpiresAt     time.Time
-	CurrencyCode  string
+	CurrencyCode  model.CurrencyCode
 	AccountType   model.AccountType
 	AccountKind   model.AccountKind
 	Subtype       model.Subtype
@@ -146,7 +146,7 @@ func uintPtr(v uint) *uint {
 
 func Run(db *gorm.DB) error {
 	// seed currencies
-	currencyMap := make(map[string]uint)
+	currencyMap := make(map[model.CurrencyCode]uint)
 	for _, c := range currencies {
 		var existing model.Currency
 		err := db.Where("code = ?", c.Code).First(&existing).Error
@@ -197,7 +197,7 @@ func Run(db *gorm.DB) error {
 				TaxNumber:          c.TaxNumber,
 				Address:            c.Address,
 				OwnerID:            c.OwnerID,
-				WorkCodeID:     workCodeMap[c.WorkCodeCode],
+				WorkCodeID:         workCodeMap[c.WorkCodeCode],
 			}
 			if err := db.Create(&company).Error; err != nil {
 				log.Printf("failed to create company %s: %v", c.Name, err)

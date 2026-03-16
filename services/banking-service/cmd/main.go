@@ -2,7 +2,7 @@ package main
 
 import (
 	"banking-service/internal/client"
-	"banking-service/internal/client/grpc"
+	clientgrpc "banking-service/internal/client/grpc"
 	"banking-service/internal/config"
 	"banking-service/internal/handler"
 	"banking-service/internal/model"
@@ -41,7 +41,7 @@ func main() {
 			},
 			client.NewUserServiceConnection,
 			fx.Annotate(
-				grpc.NewUserServiceClient,
+				clientgrpc.NewUserServiceClient,
 				fx.As(new(client.UserClient)),
 			),
 			func(conn *grpc.ClientConn) pb.PermissionServiceClient {

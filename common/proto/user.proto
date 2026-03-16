@@ -14,9 +14,9 @@ message GetClientByIdRequest {
 }
 
 message GetClientByIdResponse {
-  uint64 id    = 1;
-  string email = 2;
-  string name  = 3;
+  uint64 id        = 1;
+  string email     = 2;
+  string full_name = 3;
 }
 
 message GetEmployeeByIdRequest {
@@ -24,7 +24,7 @@ message GetEmployeeByIdRequest {
 }
 
 message GetEmployeeByIdResponse {
-  uint64 id    = 1;
-  string email = 2;
-  string name  = 3;
+  uint64 id        = 1;
+  string email     = 2;
+  string full_name = 3;
 }

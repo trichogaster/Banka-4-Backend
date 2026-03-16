@@ -30,9 +30,46 @@ const (
 	SubtypeFoundation Subtype = "Foundation"
 )
 
-var AllowedForeignCurrencies = map[string]bool{
-	"EUR": true, "CHF": true, "USD": true,
-	"GBP": true, "JPY": true, "CAD": true, "AUD": true,
+const (
+	BankCode   = "444"
+	BranchCode = "0001"
+)
+
+const (
+	DefaultDailyLimitRSD   = 250000.0
+	DefaultMonthlyLimitRSD = 1000000.0
+)
+
+var AccountKindCodes = map[AccountKind]string{
+	AccountKindCurrent: "1",
+	AccountKindForeign: "2",
+}
+
+var SubtypeTypeCodes = map[Subtype]string{
+	SubtypeStandard:   "1",
+	SubtypeLLC:        "2",
+	SubtypeJointStock: "2",
+	SubtypeFoundation: "2",
+	SubtypeSavings:    "3",
+	SubtypePension:    "4",
+	SubtypeYouth:      "5",
+	SubtypeStudent:    "6",
+	SubtypeUnemployed: "7",
+}
+
+var ValidPersonalSubtypes = map[Subtype]bool{
+	SubtypeStandard:   true,
+	SubtypeSavings:    true,
+	SubtypePension:    true,
+	SubtypeYouth:      true,
+	SubtypeStudent:    true,
+	SubtypeUnemployed: true,
+}
+
+var ValidBusinessSubtypes = map[Subtype]bool{
+	SubtypeLLC:        true,
+	SubtypeJointStock: true,
+	SubtypeFoundation: true,
 }
 
 type Account struct {
@@ -65,4 +102,8 @@ type Account struct {
 	MonthlyLimit     float64     `gorm:"not null;default:0"`
 	DailySpending    float64     `gorm:"not null;default:0"`
 	MonthlySpending  float64     `gorm:"not null;default:0"`
+}
+
+func GetTypeCode(accountKind AccountKind, accountType AccountType, subtype Subtype) string {
+	return AccountKindCodes[accountKind] + SubtypeTypeCodes[subtype];
 }

@@ -7,21 +7,6 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-var validPersonalSubtypes = map[model.Subtype]bool{
-	model.SubtypeStandard:   true,
-	model.SubtypeSavings:    true,
-	model.SubtypePension:    true,
-	model.SubtypeYouth:      true,
-	model.SubtypeStudent:    true,
-	model.SubtypeUnemployed: true,
-}
-
-var validBusinessSubtypes = map[model.Subtype]bool{
-	model.SubtypeLLC:        true,
-	model.SubtypeJointStock: true,
-	model.SubtypeFoundation: true,
-}
-
 func validateCurrentAccountStruct(sl validator.StructLevel) {
 	req := sl.Current().Interface().(dto.CreateAccountRequest)
 
@@ -31,11 +16,11 @@ func validateCurrentAccountStruct(sl validator.StructLevel) {
 
 	switch req.AccountType {
 	case model.AccountTypePersonal:
-		if !validPersonalSubtypes[req.Subtype] {
+		if !model.ValidPersonalSubtypes[req.Subtype] {
 			sl.ReportError(req.Subtype, "Subtype", "subtype", "subtype_personal", "")
 		}
 	case model.AccountTypeBusiness:
-		if !validBusinessSubtypes[req.Subtype] {
+		if !model.ValidBusinessSubtypes[req.Subtype] {
 			sl.ReportError(req.Subtype, "Subtype", "subtype", "subtype_business", "")
 		}
 	}

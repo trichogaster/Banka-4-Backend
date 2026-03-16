@@ -7,4 +7,5 @@ import (
 
 type AccountRepository interface {
 	Create(ctx context.Context, account *model.Account) error
+	AccountNumberExists(ctx context.Context, accountNumber string) (bool, error)
 }

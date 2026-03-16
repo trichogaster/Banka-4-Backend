@@ -69,7 +69,7 @@ type GetClientByIdResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	FullName      string                 `protobuf:"bytes,3,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,9 +118,9 @@ func (x *GetClientByIdResponse) GetEmail() string {
 	return ""
 }
 
-func (x *GetClientByIdResponse) GetName() string {
+func (x *GetClientByIdResponse) GetFullName() string {
 	if x != nil {
-		return x.Name
+		return x.FullName
 	}
 	return ""
 }
@@ -173,7 +173,7 @@ type GetEmployeeByIdResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            uint64                 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	FullName      string                 `protobuf:"bytes,3,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -222,9 +222,9 @@ func (x *GetEmployeeByIdResponse) GetEmail() string {
 	return ""
 }
 
-func (x *GetEmployeeByIdResponse) GetName() string {
+func (x *GetEmployeeByIdResponse) GetFullName() string {
 	if x != nil {
-		return x.Name
+		return x.FullName
 	}
 	return ""
 }
@@ -235,17 +235,17 @@ const file_common_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"\x17common/proto/user.proto\x12\auser.v1\"&\n" +
 	"\x14GetClientByIdRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"Q\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"Z\n" +
 	"\x15GetClientByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"(\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
+	"\tfull_name\x18\x03 \x01(\tR\bfullName\"(\n" +
 	"\x16GetEmployeeByIdRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x04R\x02id\"S\n" +
+	"\x02id\x18\x01 \x01(\x04R\x02id\"\\\n" +
 	"\x17GetEmployeeByIdResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name2\xb3\x01\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
+	"\tfull_name\x18\x03 \x01(\tR\bfullName2\xb3\x01\n" +
 	"\vUserService\x12N\n" +
 	"\rGetClientById\x12\x1d.user.v1.GetClientByIdRequest\x1a\x1e.user.v1.GetClientByIdResponse\x12T\n" +
 	"\x0fGetEmployeeById\x12\x1f.user.v1.GetEmployeeByIdRequest\x1a .user.v1.GetEmployeeByIdResponseB\x12Z\x10common/pkg/pb;pbb\x06proto3"

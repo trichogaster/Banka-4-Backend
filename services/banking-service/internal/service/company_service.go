@@ -29,57 +29,12 @@ func NewCompanyService(
 	}
 }
 
-func (s *CompanyService) workCodeExists(ctx context.Context, id uint) (bool, error) {
-	var count int64
-
-	err := s.db.WithContext(ctx).
-		Model(&model.WorkCode{}).
-		Where("work_code_id = ?", id).
-		Count(&count).Error
-
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
-func (s *CompanyService) registrationNumberExists(ctx context.Context, registrationNumber string) (bool, error) {
-	var count int64
-
-	err := s.db.WithContext(ctx).
-		Model(&model.Company{}).
-		Where("registration_number = ?", registrationNumber).
-		Count(&count).Error
-
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
-func (s *CompanyService) taxNumberExists(ctx context.Context, taxNumber string) (bool, error) {
-	var count int64
-
-	err := s.db.WithContext(ctx).
-		Model(&model.Company{}).
-		Where("tax_number = ?", taxNumber).
-		Count(&count).Error
-
-	if err != nil {
-		return false, err
-	}
-
-	return count > 0, nil
-}
-
 func (s *CompanyService) Create(ctx context.Context, req dto.CreateCompanyRequest) (*model.Company, error) {
 	if _, err := s.userClient.GetClientByID(ctx, req.OwnerID); err != nil {
 		return nil, errors.NotFoundErr("owner client not found")
 	}
 
-	workCodeExists, err := s.workCodeExists(ctx, req.WorkCodeID)
+	workCodeExists, err := s.repo.WorkCodeExists(ctx, req.WorkCodeID)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
@@ -87,7 +42,7 @@ func (s *CompanyService) Create(ctx context.Context, req dto.CreateCompanyReques
 		return nil, errors.NotFoundErr("work code not found")
 	}
 
-	regNumExists, err := s.registrationNumberExists(ctx, req.RegistrationNumber)
+	regNumExists, err := s.repo.RegistrationNumberExists(ctx, req.RegistrationNumber)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
@@ -95,7 +50,7 @@ func (s *CompanyService) Create(ctx context.Context, req dto.CreateCompanyReques
 		return nil, errors.ConflictErr("registration number already exists")
 	}
 
-	taxNumExists, err := s.taxNumberExists(ctx, req.TaxNumber)
+	taxNumExists, err := s.repo.TaxNumberExists(ctx, req.TaxNumber)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
