@@ -78,8 +78,6 @@ func SetupRoutes(
 		accounts.Use(auth.Middleware(verifier, permissions))
 		{
 			accounts.POST("", accountHandler.Create)
-			accounts.GET("/:account_number", accountHandler.GetByAccountNumber)
-			accounts.GET("/client/:client_id", accountHandler.GetByClientID)
 		}
 	}
 }
