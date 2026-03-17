@@ -1,21 +1,32 @@
 package dto
 
-import "time"
+import (
+	"banking-service/internal/model"
+	"time"
+)
 
 type TransferResponse struct {
-	TransactionID    *uint     `json:"transaction_id,omitempty"`
-	SourceAccountNum string    `json:"source_account_num"`
-	DestAccountNum   string    `json:"dest_account_num"`
-	Amount           float64   `json:"amount"`
-	Description      string    `json:"description,omitempty"`
-	Status           string    `json:"status"`
-	CreatedAt        time.Time `json:"created_at"`
+	TransactionID          uint                    `json:"transaction_id"`
+	PayerAccountNumber     string                  `json:"payer_account_number"`
+	RecipientAccountNumber string                  `json:"recipient_account_number"`
+	StartAmount            float64                 `json:"start_amount"`
+	StartCurrencyCode      model.CurrencyCode      `json:"start_currency_code"`
+	EndAmount              float64                 `json:"end_amount"`
+	EndCurrencyCode        model.CurrencyCode      `json:"end_currency_code"`
+	Status                 model.TransactionStatus `json:"status"`
+	CreatedAt              time.Time               `json:"created_at"`
 }
 
-type ListTransfersResponse struct {
-	Data       []TransferResponse `json:"data"`
-	Total      int64              `json:"total"`
-	Page       int                `json:"page"`
-	PageSize   int                `json:"page_size"`
-	TotalPages int                `json:"total_pages"`
+func ToTransferResponse(t *model.Transaction) *TransferResponse {
+	return &TransferResponse{
+		TransactionID:          t.TransactionID,
+		PayerAccountNumber:     t.PayerAccountNumber,
+		RecipientAccountNumber: t.RecipientAccountNumber,
+		StartAmount:            t.StartAmount,
+		StartCurrencyCode:      t.StartCurrencyCode,
+		EndAmount:              t.EndAmount,
+		EndCurrencyCode:        t.EndCurrencyCode,
+		Status:                 t.Status,
+		CreatedAt:              t.CreatedAt,
+	}
 }
