@@ -10,25 +10,24 @@ import (
 )
 
 var BankAccounts = map[model.CurrencyCode]string{
-	model.RSD: "999-0000000000000-00",
-	model.EUR: "999-0000000000001-00",
-	model.USD: "999-0000000000002-00",
-	model.CHF: "999-0000000000003-00",
-	model.GBP: "999-0000000000004-00",
-	model.JPY: "999-0000000000005-00",
-	model.CAD: "999-0000000000006-00",
-	model.AUD: "999-0000000000007-00",
+	model.RSD: "444000000000000000",
+	model.EUR: "444000000000000001",
+	model.USD: "444000000000000002",
+	model.CHF: "444000000000000003",
+	model.GBP: "444000000000000004",
+	model.JPY: "444000000000000005",
+	model.CAD: "444000000000000006",
+	model.AUD: "444000000000000007",
 }
 
 type TransactionProcessor struct {
 	accountRepo     repository.AccountRepository
 	transactionRepo repository.TransactionRepository
-	exchangeService ExchangeService
 	db              *gorm.DB
 }
 
-func NewTransactionProcessor(accountRepo repository.AccountRepository, transactionRepo repository.TransactionRepository, exchangeService ExchangeService, db *gorm.DB) *TransactionProcessor {
-	return &TransactionProcessor{accountRepo: accountRepo, transactionRepo: transactionRepo, exchangeService: exchangeService, db: db}
+func NewTransactionProcessor(accountRepo repository.AccountRepository, transactionRepo repository.TransactionRepository, db *gorm.DB) *TransactionProcessor {
+	return &TransactionProcessor{accountRepo: accountRepo, transactionRepo: transactionRepo, db: db}
 }
 
 func (tp *TransactionProcessor) Process(ctx context.Context, transactionID uint) error {
@@ -36,6 +35,10 @@ func (tp *TransactionProcessor) Process(ctx context.Context, transactionID uint)
 		transaction, err := tp.transactionRepo.GetByIDWithTx(ctx, tx, transactionID)
 		if err != nil {
 				return errors.InternalErr(err)
+		}
+
+		if transaction.Status != model.TransactionPending {
+			return errors.BadRequestErr("transaction already processed")
 		}
 
 		payer, err := tp.accountRepo.GetByAccountNumberWithTx(ctx, tx, transaction.PayerAccountNumber)
