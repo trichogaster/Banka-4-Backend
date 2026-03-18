@@ -19,7 +19,7 @@ import (
 type fakeAccountRepo struct {
 	accNumExists    bool
 	accNumExistsErr error
-	createErr error
+	createErr       error
 }
 
 func (r *fakeAccountRepo) Create(_ context.Context, _ *model.Account) error {
@@ -30,6 +30,47 @@ func (r *fakeAccountRepo) AccountNumberExists(_ context.Context, _ string) (bool
 	return r.accNumExists, r.accNumExistsErr
 }
 
+func (r *fakeAccountRepo) FindAllByClientID(_ context.Context, _ uint) ([]model.Account, error) {
+	return nil, nil
+}
+
+func (r *fakeAccountRepo) FindByAccountNumber(_ context.Context, _ string) (*model.Account, error) {
+	return nil, nil
+}
+
+func (r *fakeAccountRepo) FindByAccountNumberAndClientID(_ context.Context, _ string, _ uint) (*model.Account, error) {
+	return nil, nil
+}
+
+func (r *fakeAccountRepo) UpdateName(_ context.Context, _ string, _ string) error {
+	return nil
+}
+
+func (r *fakeAccountRepo) UpdateLimits(_ context.Context, _ string, _ float64, _ float64) error {
+	return nil
+}
+
+func (r *fakeAccountRepo) NameExistsForClient(_ context.Context, _ uint, _ string, _ string) (bool, error) {
+	return false, nil
+}
+
+type fakeVerificationTokenRepo struct{}
+
+func (r *fakeVerificationTokenRepo) Create(_ context.Context, _ *model.VerificationToken) error {
+	return nil
+}
+
+func (r *fakeVerificationTokenRepo) FindByAccountAndClient(_ context.Context, _ string, _ uint) (*model.VerificationToken, error) {
+	return nil, nil
+}
+
+func (r *fakeVerificationTokenRepo) DeleteByAccountAndClient(_ context.Context, _ string, _ uint) error {
+	return nil
+}
+
+func (r *fakeVerificationTokenRepo) MarkUsed(_ context.Context, _ uint) error {
+	return nil
+}
 
 type fakeAccountUserClient struct {
 	clientErr   error
@@ -52,9 +93,10 @@ func newAccountService(
 	db *gorm.DB,
 ) *AccountService {
 	return &AccountService{
-		repo:       repo,
-		userClient: uc,
-		db:         db,
+		repo:             repo,
+		verificationRepo: &fakeVerificationTokenRepo{},
+		userClient:       uc,
+		db:               db,
 	}
 }
 

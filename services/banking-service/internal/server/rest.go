@@ -84,6 +84,12 @@ func SetupRoutes(
 		accounts.Use(auth.Middleware(verifier, permissions))
 		{
 			accounts.POST("", accountHandler.Create)
+			accounts.GET("", accountHandler.GetClientAccounts)
+			accounts.GET("/:accountNumber", accountHandler.GetAccountDetails)
+			accounts.GET("/:accountNumber/payments", paymentHandler.GetAccountPayments)
+			accounts.PUT("/:accountNumber/name", accountHandler.UpdateAccountName)
+			accounts.POST("/:accountNumber/limits/request", accountHandler.RequestLimitsChange)
+			accounts.PUT("/:accountNumber/limits", accountHandler.ConfirmLimitsChange)
 		}
 
 		companies := api.Group("/companies")

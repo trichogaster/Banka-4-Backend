@@ -61,6 +61,7 @@ func main() {
 			service.NewExchangeService,
 			repository.NewPaymentRepository,
 			repository.NewTransactionRepository,
+			repository.NewVerificationTokenRepository,
 			service.NewAccountService,
 			service.NewCompanyService,
 			service.NewPaymentService,
@@ -81,6 +82,7 @@ func main() {
 				&model.ExchangeRate{},
 				&model.Transaction{},
 				&model.Payment{},
+				&model.VerificationToken{},
 			); err != nil {
 				return err
 			}

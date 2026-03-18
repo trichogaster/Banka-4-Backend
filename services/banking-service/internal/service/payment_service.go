@@ -24,16 +24,16 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 	// TODO: proveriti postojanje računa (#45)
 
 	// TODO: currency conversion and provision (#44)
-	var endAmount = req.Amount;
+	var endAmount = req.Amount
 	// TODO: get the right end currency code
-	var endCurrencyCode = req.CurrencyCode;
+	var endCurrencyCode = req.CurrencyCode
 
-	transaction := &model.Transaction{	
+	transaction := &model.Transaction{
 		PayerAccountNumber:     req.PayerAccountNumber,
 		RecipientAccountNumber: req.RecipientAccountNumber,
 		StartAmount:            req.Amount,
 		StartCurrencyCode:      req.CurrencyCode,
-		EndAmount:         			endAmount,
+		EndAmount:              endAmount,
 		EndCurrencyCode:        endCurrencyCode,
 		Status:                 model.TransactionProcessing,
 	}
@@ -44,11 +44,11 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 	}
 
 	payment := &model.Payment{
-		TransactionID:    transaction.TransactionID,
-		RecipientName:    req.RecipientName,
-		ReferenceNumber:  req.ReferenceNumber,
-		PaymentCode:      req.PaymentCode,
-		Purpose:          req.Purpose,
+		TransactionID:   transaction.TransactionID,
+		RecipientName:   req.RecipientName,
+		ReferenceNumber: req.ReferenceNumber,
+		PaymentCode:     req.PaymentCode,
+		Purpose:         req.Purpose,
 	}
 
 	err = s.paymentRepo.Create(ctx, payment)
@@ -57,6 +57,14 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req dto.CreatePaymen
 	}
 
 	return payment, nil
+}
+
+func (s *PaymentService) GetAccountPayments(ctx context.Context, accountNumber string, filters *dto.PaymentFilters) ([]model.Payment, int64, error) {
+	payments, total, err := s.paymentRepo.FindByAccount(ctx, accountNumber, filters)
+	if err != nil {
+		return nil, 0, errors.InternalErr(err)
+	}
+	return payments, total, nil
 }
 
 func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code string) (*model.Payment, error) {

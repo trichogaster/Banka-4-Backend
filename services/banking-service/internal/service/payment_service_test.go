@@ -56,6 +56,10 @@ func (f *fakeTransactionRepo) Create(ctx context.Context, t *model.Transaction) 
 	return nil
 }
 
+func (f *fakePaymentRepo) FindByAccount(_ context.Context, _ string, _ *dto.PaymentFilters) ([]model.Payment, int64, error) {
+	return nil, 0, nil
+}
+
 // ── Constructor ────────────────────────────────────────────────────────
 
 func newPaymentService(paymentRepo repository.PaymentRepository, transactionRepo repository.TransactionRepository) *PaymentService {
