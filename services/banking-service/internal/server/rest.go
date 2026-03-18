@@ -29,13 +29,15 @@ func NewServer(
 	accountHandler *handler.AccountHandler,
 	companyHandler *handler.CompanyHandler,
 	cardHandler *handler.CardHandler,
+	exchangeHandler *handler.ExchangeHandler,
+	paymentHandler *handler.PaymentHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
 	r := gin.New()
 
 	InitRouter(r, cfg)
-	SetupRoutes(r, healthHandler, accountHandler, companyHandler, cardHandler, verifier, permissions)
+	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler,  cardHandler, verifier, permissions)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -69,6 +71,8 @@ func SetupRoutes(
 	accountHandler *handler.AccountHandler,
 	companyHandler *handler.CompanyHandler,
 	cardHandler *handler.CardHandler,
+	exchangeHandler *handler.ExchangeHandler,
+	paymentHandler *handler.PaymentHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
@@ -99,6 +103,19 @@ func SetupRoutes(
 			cards.PUT("/:cardId/block", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.BlockCard)
 			cards.PUT("/:cardId/unblock", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.UnblockCard)
 			cards.PUT("/:cardId/deactivate", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.DeactivateCard)
+    }
+    
+		exchange := api.Group("/exchange")
+		{
+			exchange.GET("/rates", exchangeHandler.GetRates)
+			exchange.GET("/calculate", exchangeHandler.Calculate)
+    }
+    
+		payments := api.Group("/payments")
+		payments.Use(auth.Middleware(verifier, permissions))
+		{
+			payments.POST("", paymentHandler.CreatePayment)
+			payments.POST("/:id/verify", paymentHandler.VerifyPayment)
 		}
 	}
 }

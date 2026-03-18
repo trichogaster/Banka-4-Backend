@@ -2,6 +2,7 @@ package repository
 
 import (
 	"banking-service/internal/model"
+	"common/pkg/db"
 	"context"
 	"errors"
 
@@ -33,17 +34,27 @@ func (r *accountRepository) AccountNumberExists(ctx context.Context, accountNumb
 }
 
 func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumber string) (*model.Account, error) {
-	var account model.Account
+	db := db.DBFromContext(ctx, r.db)
 
-	err := r.db.WithContext(ctx).
-		First(&account, "account_number = ?", accountNumber).
-		Error
+	var account model.Account
+	err := db.WithContext(ctx).Preload("Currency").First(&account, accountNumber).Error
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
 	return &account, nil
+}
+
+func (r *accountRepository) UpdateBalance(ctx context.Context, account *model.Account) error {
+  db := db.DBFromContext(ctx, r.db)
+  
+	return db.WithContext(ctx).Model(account).Updates(map[string]interface{}{
+		"balance":           account.Balance,
+		"available_balance": account.AvailableBalance,
+		"daily_spending":    account.DailySpending,
+		"monthly_spending":  account.MonthlySpending,
+	}).Error
 }
