@@ -82,7 +82,7 @@ func SetupRoutes(
 		accounts.Use(auth.Middleware(verifier, permissions))
 		{
 			accounts.POST("", accountHandler.Create)
-			accounts.GET("/:accountId/cards", cardHandler.ListCardsByAccount)
+			accounts.GET("/:accountId/cards", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.ListCardsByAccount)
 		}
 
 		companies := api.Group("/companies")
@@ -96,7 +96,7 @@ func SetupRoutes(
 		{
 			cards.POST("/request", auth.RequireIdentityType(auth.IdentityClient), cardHandler.RequestCard)
 			cards.POST("/request/confirm", auth.RequireIdentityType(auth.IdentityClient), cardHandler.ConfirmCardRequest)
-			cards.PUT("/:cardId/block", cardHandler.BlockCard)
+			cards.PUT("/:cardId/block", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.BlockCard)
 			cards.PUT("/:cardId/unblock", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.UnblockCard)
 			cards.PUT("/:cardId/deactivate", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.DeactivateCard)
 		}

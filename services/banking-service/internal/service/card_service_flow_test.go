@@ -178,9 +178,9 @@ func (r *fakeCardServiceCardRequestRepo) Create(_ context.Context, request *mode
 	return nil
 }
 
-func (r *fakeCardServiceCardRequestRepo) FindByAccountNumberClientIDAndCode(_ context.Context, accountNumber string, clientID uint, code string) (*model.CardRequest, error) {
+func (r *fakeCardServiceCardRequestRepo) FindByAccountNumberAndCode(_ context.Context, accountNumber string, code string) (*model.CardRequest, error) {
 	for _, request := range r.requests {
-		if request.AccountNumber == accountNumber && request.RequestedByClientID == clientID && request.ConfirmationCode == code {
+		if request.AccountNumber == accountNumber && request.ConfirmationCode == code {
 			cloned := *request
 			return &cloned, nil
 		}
@@ -188,10 +188,10 @@ func (r *fakeCardServiceCardRequestRepo) FindByAccountNumberClientIDAndCode(_ co
 	return nil, nil
 }
 
-func (r *fakeCardServiceCardRequestRepo) FindLatestPendingByAccountNumberAndClientID(_ context.Context, accountNumber string, clientID uint) (*model.CardRequest, error) {
+func (r *fakeCardServiceCardRequestRepo) FindLatestPendingByAccountNumber(_ context.Context, accountNumber string) (*model.CardRequest, error) {
 	var latest *model.CardRequest
 	for _, request := range r.requests {
-		if request.AccountNumber != accountNumber || request.RequestedByClientID != clientID || request.Used || !request.ExpiresAt.After(time.Now()) {
+		if request.AccountNumber != accountNumber || request.Used || !request.ExpiresAt.After(time.Now()) {
 			continue
 		}
 		if latest == nil || request.CardRequestID > latest.CardRequestID {
@@ -367,7 +367,6 @@ func TestConfirmCardRequestCreatesAuthorizedPersonCard(t *testing.T) {
 			1: {
 				CardRequestID:             1,
 				AccountNumber:             "BUS-2",
-				RequestedByClientID:       1,
 				ConfirmationCode:          "123456",
 				ExpiresAt:                 time.Now().Add(10 * time.Minute),
 				ForAuthorizedPerson:       true,

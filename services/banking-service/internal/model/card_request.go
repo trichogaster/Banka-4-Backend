@@ -5,7 +5,6 @@ import "time"
 type CardRequest struct {
 	CardRequestID               uint      `gorm:"primaryKey"`
 	AccountNumber               string    `gorm:"not null;index"`
-	RequestedByClientID         uint      `gorm:"not null;index"`
 	ConfirmationCode            string    `gorm:"not null;size:6;index"`
 	ExpiresAt                   time.Time `gorm:"not null"`
 	Used                        bool      `gorm:"not null;default:false"`

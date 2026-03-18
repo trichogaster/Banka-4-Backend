@@ -133,10 +133,7 @@ func (s *CardService) RequestCard(ctx context.Context, input *RequestCardInput) 
 	if strings.TrimSpace(input.AccountNumber) == "" {
 		return nil, errors.BadRequestErr("account number is required")
 	}
-	authCtx, err := requireClientAuth(ctx)
-	if err != nil {
-		return nil, err
-	}
+	authCtx := auth.GetAuthFromContext(ctx)
 
 	account, err := s.accountRepo.FindByAccountNumber(ctx, input.AccountNumber)
 	if err != nil {
@@ -149,7 +146,7 @@ func (s *CardService) RequestCard(ctx context.Context, input *RequestCardInput) 
 		return nil, errors.ForbiddenErr("account does not belong to authenticated client")
 	}
 
-	existingRequest, err := s.cardRequestRepo.FindLatestPendingByAccountNumberAndClientID(ctx, account.AccountNumber, *authCtx.ClientID)
+	existingRequest, err := s.cardRequestRepo.FindLatestPendingByAccountNumber(ctx, account.AccountNumber)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
@@ -192,7 +189,6 @@ func (s *CardService) RequestCard(ctx context.Context, input *RequestCardInput) 
 
 	request := &model.CardRequest{
 		AccountNumber:       account.AccountNumber,
-		RequestedByClientID: *authCtx.ClientID,
 		ConfirmationCode:    code,
 		ExpiresAt:           time.Now().UTC().Add(confirmationCodeTTL),
 		Used:                false,
@@ -221,10 +217,7 @@ func (s *CardService) RequestCard(ctx context.Context, input *RequestCardInput) 
 }
 
 func (s *CardService) ConfirmCardRequest(ctx context.Context, accountNumber, code string) (*model.Card, error) {
-	authCtx, err := requireClientAuth(ctx)
-	if err != nil {
-		return nil, err
-	}
+	authCtx := auth.GetAuthFromContext(ctx)
 
 	account, err := s.accountRepo.FindByAccountNumber(ctx, accountNumber)
 	if err != nil {
@@ -237,7 +230,7 @@ func (s *CardService) ConfirmCardRequest(ctx context.Context, accountNumber, cod
 		return nil, errors.ForbiddenErr("account does not belong to authenticated client")
 	}
 
-	request, err := s.cardRequestRepo.FindByAccountNumberClientIDAndCode(ctx, accountNumber, *authCtx.ClientID, code)
+	request, err := s.cardRequestRepo.FindByAccountNumberAndCode(ctx, accountNumber, code)
 	if err != nil {
 		return nil, errors.InternalErr(err)
 	}
@@ -336,10 +329,7 @@ func (s *CardService) BlockCard(ctx context.Context, cardID uint) (*model.Card, 
 		return nil, err
 	}
 
-	authCtx, err := requireAuth(ctx)
-	if err != nil {
-		return nil, err
-	}
+	authCtx := auth.GetAuthFromContext(ctx)
 
 	switch authCtx.IdentityType {
 	case auth.IdentityEmployee:
@@ -374,10 +364,6 @@ func (s *CardService) BlockCard(ctx context.Context, cardID uint) (*model.Card, 
 }
 
 func (s *CardService) UnblockCard(ctx context.Context, cardID uint) (*model.Card, error) {
-	if err := requireEmployeeAuthOnly(ctx); err != nil {
-		return nil, err
-	}
-
 	card, account, err := s.getCardAndAccount(ctx, cardID)
 	if err != nil {
 		return nil, err
@@ -403,10 +389,6 @@ func (s *CardService) UnblockCard(ctx context.Context, cardID uint) (*model.Card
 }
 
 func (s *CardService) DeactivateCard(ctx context.Context, cardID uint) (*model.Card, error) {
-	if err := requireEmployeeAuthOnly(ctx); err != nil {
-		return nil, err
-	}
-
 	card, account, err := s.getCardAndAccount(ctx, cardID)
 	if err != nil {
 		return nil, err
@@ -502,10 +484,7 @@ func (s *CardService) getCardAndAccount(ctx context.Context, cardID uint) (*mode
 }
 
 func (s *CardService) ensureCanAccessAccount(ctx context.Context, account *model.Account) error {
-	authCtx, err := requireAuth(ctx)
-	if err != nil {
-		return err
-	}
+	authCtx := auth.GetAuthFromContext(ctx)
 
 	switch authCtx.IdentityType {
 	case auth.IdentityEmployee:
@@ -521,39 +500,6 @@ func (s *CardService) ensureCanAccessAccount(ctx context.Context, account *model
 	default:
 		return errors.ForbiddenErr("unsupported identity type")
 	}
-}
-
-func requireAuth(ctx context.Context) (*auth.AuthContext, error) {
-	authCtx := auth.GetAuthFromContext(ctx)
-	if authCtx == nil {
-		return nil, errors.UnauthorizedErr("not authenticated")
-	}
-
-	return authCtx, nil
-}
-
-func requireClientAuth(ctx context.Context) (*auth.AuthContext, error) {
-	authCtx, err := requireAuth(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if authCtx.IdentityType != auth.IdentityClient || authCtx.ClientID == nil {
-		return nil, errors.ForbiddenErr("only clients can perform this action")
-	}
-
-	return authCtx, nil
-}
-
-func requireEmployeeAuthOnly(ctx context.Context) error {
-	authCtx, err := requireAuth(ctx)
-	if err != nil {
-		return err
-	}
-	if authCtx.IdentityType != auth.IdentityEmployee || authCtx.EmployeeID == nil {
-		return errors.ForbiddenErr("only employees can perform this action")
-	}
-
-	return nil
 }
 
 func validateAuthorizedPersonInput(person *AuthorizedPersonInput) error {

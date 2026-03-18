@@ -21,12 +21,11 @@ func (r *cardRequestRepository) Create(ctx context.Context, request *model.CardR
 	return r.db.WithContext(ctx).Create(request).Error
 }
 
-func (r *cardRequestRepository) FindByAccountNumberClientIDAndCode(ctx context.Context, accountNumber string, clientID uint, code string) (*model.CardRequest, error) {
+func (r *cardRequestRepository) FindByAccountNumberAndCode(ctx context.Context, accountNumber string, code string) (*model.CardRequest, error) {
 	var request model.CardRequest
 
 	err := r.db.WithContext(ctx).
 		Where("account_number = ?", accountNumber).
-		Where("requested_by_client_id = ?", clientID).
 		Where("confirmation_code = ?", code).
 		First(&request).
 		Error
@@ -40,12 +39,11 @@ func (r *cardRequestRepository) FindByAccountNumberClientIDAndCode(ctx context.C
 	return &request, nil
 }
 
-func (r *cardRequestRepository) FindLatestPendingByAccountNumberAndClientID(ctx context.Context, accountNumber string, clientID uint) (*model.CardRequest, error) {
+func (r *cardRequestRepository) FindLatestPendingByAccountNumber(ctx context.Context, accountNumber string) (*model.CardRequest, error) {
 	var request model.CardRequest
 
 	err := r.db.WithContext(ctx).
 		Where("account_number = ?", accountNumber).
-		Where("requested_by_client_id = ?", clientID).
 		Where("used = ?", false).
 		Where("expires_at > ?", time.Now()).
 		Order("card_request_id DESC").
