@@ -16,6 +16,7 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/api/accounts": {
+        "/api/accounts/{accountId}/cards": {
             "get": {
                 "security": [
                     {
@@ -23,6 +24,7 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Returns all active accounts belonging to the authenticated client",
+                "description": "Returns cards for the specified account. Clients can access only their own accounts, while employees can access any account.",
                 "produces": [
                     "application/json"
                 ],
@@ -30,6 +32,18 @@ const docTemplate = `{
                     "accounts"
                 ],
                 "summary": "List client accounts",
+                    "cards"
+                ],
+                "summary": "List cards for an account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account number",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -44,6 +58,7 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
+                            "$ref": "#/definitions/dto.AccountCardsResponse"
                         }
                     },
                     "401": {
@@ -91,6 +106,9 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -112,12 +130,22 @@ const docTemplate = `{
         },
         "/api/accounts/{accountNumber}": {
             "get": {
+                    }
+                }
+            }
+        },
+        "/api/cards/request": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Returns full details for a specific account owned by the authenticated client",
+                "description": "Client requests a new card for their account. The request is confirmed later using a confirmation code.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -132,6 +160,18 @@ const docTemplate = `{
                         "name": "accountNumber",
                         "in": "path",
                         "required": true
+                    "cards"
+                ],
+                "summary": "Request a new card",
+                "parameters": [
+                    {
+                        "description": "Card request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RequestCardRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -139,10 +179,17 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.AccountResponse"
+                            "$ref": "#/definitions/dto.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -164,12 +211,25 @@ const docTemplate = `{
         },
         "/api/accounts/{accountNumber}/limits": {
             "put": {
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cards/request/confirm": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Confirms a pending limit change request using the verification code from the mobile app",
+                "description": "Confirms a pending card request using the confirmation code and creates the card.",
                 "consumes": [
                     "application/json"
                 ],
@@ -190,20 +250,38 @@ const docTemplate = `{
                     },
                     {
                         "description": "Verification code, you can use 1234 for testing but still needs request to be made first",
+                    "cards"
+                ],
+                "summary": "Confirm a card request",
+                "parameters": [
+                    {
+                        "description": "Confirmation payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.ConfirmLimitsChangeRequest"
+                            "$ref": "#/definitions/dto.ConfirmCardRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK"
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CardResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -225,6 +303,18 @@ const docTemplate = `{
         },
         "/api/accounts/{accountNumber}/limits/request": {
             "post": {
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cards/{cardId}/block": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -234,6 +324,7 @@ const docTemplate = `{
                 "consumes": [
                     "application/json"
                 ],
+                "description": "Blocks a card. Clients can block only their own cards, while employees can block any card.",
                 "produces": [
                     "application/json"
                 ],
@@ -257,6 +348,16 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.RequestLimitsChangeRequest"
                         }
+                    "cards"
+                ],
+                "summary": "Block a card",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Card ID",
+                        "name": "cardId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -264,10 +365,17 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.RequestLimitsChangeResponse"
+                            "$ref": "#/definitions/dto.CardResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -288,6 +396,7 @@ const docTemplate = `{
             }
         },
         "/api/accounts/{accountNumber}/name": {
+        "/api/cards/{cardId}/deactivate": {
             "put": {
                 "security": [
                     {
@@ -298,6 +407,7 @@ const docTemplate = `{
                 "consumes": [
                     "application/json"
                 ],
+                "description": "Deactivates a card permanently. Only employees can perform this action.",
                 "produces": [
                     "application/json"
                 ],
@@ -321,14 +431,34 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.UpdateAccountNameRequest"
                         }
+                    "cards"
+                ],
+                "summary": "Deactivate a card",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Card ID",
+                        "name": "cardId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK"
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CardResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -350,12 +480,15 @@ const docTemplate = `{
         },
         "/api/accounts/{accountNumber}/payments": {
             "get": {
+        "/api/cards/{cardId}/unblock": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Returns a paginated list of payments for an account, filterable by status, date range, and amount. Only the account owner can access this.",
+                "description": "Unblocks a blocked card. Only employees can perform this action.",
                 "produces": [
                     "application/json"
                 ],
@@ -415,6 +548,16 @@ const docTemplate = `{
                         "description": "Page size",
                         "name": "page_size",
                         "in": "query"
+                    "cards"
+                ],
+                "summary": "Unblock a card",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Card ID",
+                        "name": "cardId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -422,6 +565,7 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/banking-service_internal_dto.ListPaymentsResponse"
+                            "$ref": "#/definitions/dto.CardResponse"
                         }
                     },
                     "400": {
@@ -430,8 +574,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/errors.AppError"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/errors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/errors.AppError"
                         }
@@ -468,6 +624,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "account_kind": {
+        "dto.AccountCardsResponse": {
+            "type": "object",
+            "properties": {
+                "account_name": {
                     "type": "string"
                 },
                 "account_number": {
@@ -565,6 +725,43 @@ const docTemplate = `{
             ],
             "properties": {
                 "code": {
+                "cards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CardResponse"
+                    }
+                }
+            }
+        },
+        "dto.AuthorizedPersonRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "first_name",
+                "last_name"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "phone_number": {
                     "type": "string"
                 }
             }
@@ -677,6 +874,37 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "recipient_name": {
+        "dto.CardResponse": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "account_number": {
+                    "type": "string"
+                },
+                "authorized_person_id": {
+                    "type": "integer"
+                },
+                "card_brand": {
+                    "type": "string"
+                },
+                "card_number": {
+                    "type": "string"
+                },
+                "card_type": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "number"
+                },
+                "name": {
                     "type": "string"
                 },
                 "status": {
@@ -703,6 +931,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+        "dto.ConfirmCardRequest": {
+            "type": "object",
+            "required": [
+                "account_number",
+                "confirmation_code"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "confirmation_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -787,6 +1034,20 @@ const docTemplate = `{
                 "SubtypeJointStock",
                 "SubtypeFoundation"
             ]
+        },
+        "dto.RequestCardRequest": {
+            "type": "object",
+            "required": [
+                "account_number"
+            ],
+            "properties": {
+                "account_number": {
+                    "type": "string"
+                },
+                "authorized_person": {
+                    "$ref": "#/definitions/dto.AuthorizedPersonRequest"
+                }
+            }
         },
         "errors.AppError": {
             "type": "object",

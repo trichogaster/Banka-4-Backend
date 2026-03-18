@@ -4,6 +4,7 @@ import (
 	"banking-service/internal/model"
 	"common/pkg/db"
 	"context"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -41,18 +42,6 @@ func (r *accountRepository) FindAllByClientID(ctx context.Context, clientID uint
 	return accounts, err
 }
 
-func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumber string) (*model.Account, error) {
-	var account model.Account
-	err := r.db.WithContext(ctx).
-		Preload("Currency").
-		Where("account_number = ?", accountNumber).
-		First(&account).Error
-	if err != nil {
-		return nil, err
-	}
-	return &account, nil
-}
-
 func (r *accountRepository) FindByAccountNumberAndClientID(ctx context.Context, accountNumber string, clientID uint) (*model.Account, error) {
 	var account model.Account
 	err := r.db.WithContext(ctx).
@@ -88,19 +77,28 @@ func (r *accountRepository) NameExistsForClient(ctx context.Context, clientID ui
 	return count > 0, err
 }
 
-func (r *accountRepository) GetByAccountNumber(ctx context.Context, accountNumber string) (*model.Account, error) {
+func (r *accountRepository) FindByAccountNumber(ctx context.Context, accountNumber string) (*model.Account, error) {
 	db := db.DBFromContext(ctx, r.db)
 
 	var account model.Account
-	if err := db.WithContext(ctx).First(&account, accountNumber).Error; err != nil {
+	err := db.WithContext(ctx).Preload("Currency").First(&account, accountNumber).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
 	return &account, nil
 }
 
-func (r *accountRepository) Update(ctx context.Context, account *model.Account) error {
-	db := db.DBFromContext(ctx, r.db)
-
-	return db.WithContext(ctx).Save(account).Error
+func (r *accountRepository) UpdateBalance(ctx context.Context, account *model.Account) error {
+  db := db.DBFromContext(ctx, r.db)
+  
+	return db.WithContext(ctx).Model(account).Updates(map[string]interface{}{
+		"balance":           account.Balance,
+		"available_balance": account.AvailableBalance,
+		"daily_spending":    account.DailySpending,
+		"monthly_spending":  account.MonthlySpending,
+	}).Error
 }
-

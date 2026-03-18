@@ -28,9 +28,10 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 		return
 	}
 
+
 	payment, err := h.service.CreatePayment(c.Request.Context(), req)
 	if err != nil {
-		c.Error(errors.InternalErr(err))
+		c.Error(err)
 		return
 	}
 
@@ -40,7 +41,7 @@ func (h *PaymentHandler) CreatePayment(c *gin.Context) {
 }
 
 func (h *PaymentHandler) VerifyPayment(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("payment_id"), 10, 64)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.Error(errors.BadRequestErr("invalid payment id"))
 		return
@@ -54,7 +55,7 @@ func (h *PaymentHandler) VerifyPayment(c *gin.Context) {
 
 	payment, err := h.service.VerifyPayment(c.Request.Context(), uint(id), req.Code)
 	if err != nil {
-		c.Error(errors.InternalErr(err))
+		c.Error(err)
 		return
 	}
 

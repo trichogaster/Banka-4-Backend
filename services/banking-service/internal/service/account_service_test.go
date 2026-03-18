@@ -90,8 +90,8 @@ func (r *fakeAccountRepo) GetByAccountNumber(_ context.Context, _ string) (*mode
 	return r.getByAccNumber, r.getByAccNumberErr
 }
 
-func (r *fakeAccountRepo) Update(_ context.Context, _ *model.Account) error {
-	return r.updateErr
+func (r *fakeAccountRepo) UpdateBalance(_ context.Context, _ *model.Account) error {
+	return nil
 }
 
 type fakeAccountUserClient struct {

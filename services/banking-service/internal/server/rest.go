@@ -30,13 +30,15 @@ func NewServer(
 	companyHandler *handler.CompanyHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	paymentHandler *handler.PaymentHandler,
+	cardHandler *handler.CardHandler,
+	loanHandler *handler.LoanHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
 	r := gin.New()
 
 	InitRouter(r, cfg)
-	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler, verifier, permissions)
+	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler,  cardHandler, loanHandler, verifier, permissions)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -71,6 +73,8 @@ func SetupRoutes(
 	companyHandler *handler.CompanyHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	paymentHandler *handler.PaymentHandler,
+	cardHandler *handler.CardHandler,
+	loanHandler *handler.LoanHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
@@ -84,6 +88,7 @@ func SetupRoutes(
 		accounts.Use(auth.Middleware(verifier, permissions))
 		{
 			accounts.POST("", accountHandler.Create)
+      accounts.GET("/:accountId/cards", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.ListCardsByAccount)
 			//TODO employee list all accounts here?
 		}
 
@@ -104,6 +109,16 @@ func SetupRoutes(
 			companies.POST("", companyHandler.Create)
 		}
 
+		cards := api.Group("/cards")
+		cards.Use(auth.Middleware(verifier, permissions))
+		{
+			cards.POST("/request", auth.RequireIdentityType(auth.IdentityClient), cardHandler.RequestCard)
+			cards.POST("/request/confirm", auth.RequireIdentityType(auth.IdentityClient), cardHandler.ConfirmCardRequest)
+			cards.PUT("/:cardId/block", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.BlockCard)
+			cards.PUT("/:cardId/unblock", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.UnblockCard)
+			cards.PUT("/:cardId/deactivate", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.DeactivateCard)
+    }
+    
 		exchange := api.Group("/exchange")
 		{
 			exchange.GET("/rates", exchangeHandler.GetRates)
@@ -115,6 +130,14 @@ func SetupRoutes(
 		{
 			payments.POST("", paymentHandler.CreatePayment)
 			payments.POST("/:id/verify", paymentHandler.VerifyPayment)
+		}
+
+		clientLoans := api.Group("/client/:client_id/loans")
+		clientLoans.Use(auth.Middleware(verifier, permissions))
+		{
+			clientLoans.GET("", loanHandler.GetLoans)
+			clientLoans.GET("/:loan_id", loanHandler.GetLoanByID)
+			clientLoans.POST("/request", loanHandler.SubmitLoanRequest)
 		}
 	}
 }
