@@ -67,6 +67,7 @@ func main() {
 			},
 			repository.NewPaymentRepository,
 			repository.NewTransactionRepository,
+			repository.NewVerificationTokenRepository,
 			repository.NewGormTransactionManager,
 			repository.NewLoanRepository,
 			repository.NewLoanTypeRepository,
@@ -99,8 +100,10 @@ func main() {
 				&model.ExchangeRate{},
 				&model.Transaction{},
 				&model.Payment{},
+				&model.VerificationToken{},
 				&model.LoanType{},
 				&model.LoanRequest{},
+        &model.VerificationToken{},
 			); err != nil {
 				return err
 			}
