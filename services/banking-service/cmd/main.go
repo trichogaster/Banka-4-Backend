@@ -1,21 +1,6 @@
 package main
 
 import (
-	"banking-service/internal/client"
-	clientgrpc "banking-service/internal/client/grpc"
-	"banking-service/internal/config"
-	"banking-service/internal/handler"
-	"banking-service/internal/model"
-	"banking-service/internal/permission"
-	"banking-service/internal/repository"
-	"banking-service/internal/seed"
-	"banking-service/internal/server"
-	"banking-service/internal/service"
-	"common/pkg/auth"
-	"common/pkg/db"
-	"common/pkg/jwt"
-	"common/pkg/logging"
-	"common/pkg/pb"
 	"context"
 
 	"go.uber.org/fx"

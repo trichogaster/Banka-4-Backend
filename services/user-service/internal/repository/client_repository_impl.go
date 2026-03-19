@@ -3,11 +3,10 @@ package repository
 import (
 	"context"
 	"errors"
-	"user-service/internal/dto"
-	"user-service/internal/model"
 
 	"gorm.io/gorm"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
 )
 

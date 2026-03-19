@@ -1,14 +1,14 @@
 package service
 
 import (
-	"banking-service/internal/dto"
-	"banking-service/internal/model"
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/dto"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/model"
 )
 
 type fakeCompanyRepo struct {

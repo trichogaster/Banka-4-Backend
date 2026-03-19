@@ -1,8 +1,6 @@
 package seed
 
 import (
-	"common/pkg/auth"
-	"common/pkg/permission"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
