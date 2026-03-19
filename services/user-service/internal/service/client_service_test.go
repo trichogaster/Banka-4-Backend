@@ -1,14 +1,15 @@
 package service
 
 import (
+	"common/pkg/auth"
 	"context"
 	"fmt"
 	"testing"
 	"time"
 	"user-service/internal/model"
 
-	"common/pkg/auth"
 	"user-service/internal/dto"
+	"user-service/internal/model"
 
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +27,37 @@ func newClientService(
 		mailer,
 		testConfig(),
 	)
+}
+
+func TestGetMobileVerificationSecret(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns secret for authenticated client", func(t *testing.T) {
+		svc := newClientService(
+			&fakeClientRepo{byID: &model.Client{ClientID: 2, MobileVerificationSecret: "JBSWY3DPEHPK3PXP"}},
+			&fakeIdentityRepo{},
+			&fakeActivationTokenRepo{},
+			&fakeMailer{},
+		)
+
+		secret, err := svc.GetMobileVerificationSecret(context.Background(), 2)
+		require.NoError(t, err)
+		require.Equal(t, "JBSWY3DPEHPK3PXP", secret)
+	})
+
+	t.Run("not found when secret is empty", func(t *testing.T) {
+		svc := newClientService(
+			&fakeClientRepo{byID: &model.Client{ClientID: 2}},
+			&fakeIdentityRepo{},
+			&fakeActivationTokenRepo{},
+			&fakeMailer{},
+		)
+
+		secret, err := svc.GetMobileVerificationSecret(context.Background(), 2)
+		require.Error(t, err)
+		require.Empty(t, secret)
+		require.Contains(t, err.Error(), "mobile verification secret not found")
+	})
 }
 
 func TestClientRegister(t *testing.T) {
@@ -130,6 +162,7 @@ func TestClientRegister(t *testing.T) {
 			require.Equal(t, auth.IdentityClient, client.Identity.Type)
 			require.False(t, client.Identity.Active)
 			require.Equal(t, uint(1), client.IdentityID)
+			require.NotEmpty(t, client.MobileVerificationSecret)
 		})
 	}
 }

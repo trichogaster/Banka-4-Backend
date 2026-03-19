@@ -111,6 +111,12 @@ func SetupRoutes(
 			cli.POST("/register", clientHandler.Register)
 			cli.PATCH("/:id", auth.RequirePermission(permission.ClientUpdate), clientHandler.UpdateClient)
 		}
+
+		mobileSecret := api.Group("")
+		mobileSecret.Use(auth.Middleware(verifier, permissions), auth.RequireIdentityType(auth.IdentityClient))
+		{
+			mobileSecret.GET("/secret-mobile", clientHandler.GetMobileSecret)
+		}
 	}
 }
 

@@ -14,7 +14,10 @@ import (
 )
 
 type fakeCardServiceAccountRepo struct {
-	accounts map[string]*model.Account
+	accounts   map[string]*model.Account
+	accountArr []model.Account
+	account    *model.Account
+	nameExists bool
 }
 
 func (r *fakeCardServiceAccountRepo) Create(_ context.Context, _ *model.Account) error {
@@ -39,11 +42,32 @@ func (f *fakeCardServiceAccountRepo) UpdateBalance(ctx context.Context, account 
 	return nil
 }
 
+func (f *fakeCardServiceAccountRepo) FindAllByClientID(_ context.Context, _ uint) ([]model.Account, error) {
+	return f.accountArr, nil
+}
+
+func (f *fakeCardServiceAccountRepo) FindByAccountNumberAndClientID(_ context.Context, _ string, _ uint) (*model.Account, error) {
+	return f.account, nil
+}
+
+func (f *fakeCardServiceAccountRepo) NameExistsForClient(_ context.Context, _ uint, _ string, _ string) (bool, error) {
+	return f.nameExists, nil
+}
+
+func (f *fakeCardServiceAccountRepo) UpdateName(_ context.Context, _ string, _ string) error {
+	return nil
+}
+
+func (f *fakeCardServiceAccountRepo) UpdateLimits(_ context.Context, _ string, _ float64, _ float64) error {
+	return nil
+}
+
+
 
 type fakeCardServiceCardRepo struct {
-	cards         map[uint]*model.Card
-	nextID        uint
-	existingPANs  map[string]bool
+	cards        map[uint]*model.Card
+	nextID       uint
+	existingPANs map[string]bool
 }
 
 func (r *fakeCardServiceCardRepo) Create(_ context.Context, card *model.Card) error {
@@ -140,8 +164,8 @@ func (r *fakeCardServiceCardRepo) Update(_ context.Context, card *model.Card) er
 }
 
 type fakeCardServiceAuthorizedPersonRepo struct {
-	people  map[uint]*model.AuthorizedPerson
-	nextID  uint
+	people map[uint]*model.AuthorizedPerson
+	nextID uint
 }
 
 func (r *fakeCardServiceAuthorizedPersonRepo) Create(_ context.Context, person *model.AuthorizedPerson) error {
@@ -230,9 +254,9 @@ func (f *fakeCardServiceUserClient) GetEmployeeByID(_ context.Context, _ uint) (
 }
 
 type sentEmail struct {
-to      string
-subject string
-body    string
+	to      string
+	subject string
+	body    string
 }
 
 type fakeCardServiceMailer struct {
