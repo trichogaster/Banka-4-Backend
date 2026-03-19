@@ -28,15 +28,18 @@ func NewServer(
 	healthHandler *handler.HealthHandler,
 	accountHandler *handler.AccountHandler,
 	companyHandler *handler.CompanyHandler,
+	payeeHandler *handler.PayeeHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	paymentHandler *handler.PaymentHandler,
+	cardHandler *handler.CardHandler,
+	loanHandler *handler.LoanHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
 	r := gin.New()
 
 	InitRouter(r, cfg)
-	SetupRoutes(r, healthHandler, accountHandler, companyHandler, exchangeHandler, paymentHandler, verifier, permissions)
+	SetupRoutes(r, healthHandler, accountHandler, companyHandler, payeeHandler, exchangeHandler, paymentHandler,  cardHandler, loanHandler, verifier, permissions)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -69,8 +72,11 @@ func SetupRoutes(
 	healthHandler *handler.HealthHandler,
 	accountHandler *handler.AccountHandler,
 	companyHandler *handler.CompanyHandler,
+	payeeHandler *handler.PayeeHandler,
 	exchangeHandler *handler.ExchangeHandler,
 	paymentHandler *handler.PaymentHandler,
+	cardHandler *handler.CardHandler,
+	loanHandler *handler.LoanHandler,
 	verifier auth.TokenVerifier,
 	permissions auth.PermissionProvider,
 ) {
@@ -84,6 +90,30 @@ func SetupRoutes(
 		accounts.Use(auth.Middleware(verifier, permissions))
 		{
 			accounts.POST("", accountHandler.Create)
+      accounts.GET("/:accountId/cards", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.ListCardsByAccount)
+			//TODO employee list all accounts here?
+		}
+
+		client := api.Group("/clients/:clientId")
+		client.Use(auth.Middleware(verifier, permissions))
+		{
+			clientAccounts := client.Group("/accounts")
+			{
+				clientAccounts.GET("", accountHandler.GetClientAccounts)
+				clientAccounts.GET("/:accountNumber", accountHandler.GetAccountDetails)
+				clientAccounts.GET("/:accountNumber/payments", paymentHandler.GetAccountPayments)
+				clientAccounts.PUT("/:accountNumber/name", accountHandler.UpdateAccountName)
+				clientAccounts.POST("/:accountNumber/limits/request", accountHandler.RequestLimitsChange)
+				clientAccounts.PUT("/:accountNumber/limits", accountHandler.ConfirmLimitsChange)
+			}
+			clientPayments := client.Group("/payments")
+			{
+				clientPayments.GET("", paymentHandler.GetClientPayments)
+				clientPayments.GET("/:id", paymentHandler.GetPaymentByID)
+				clientPayments.GET("/:id/receipt", paymentHandler.GetReceipt)
+				clientPayments.POST("", paymentHandler.CreatePayment)
+				clientPayments.POST("/:id/verify", paymentHandler.VerifyPayment)
+			}
 		}
 
 		companies := api.Group("/companies")
@@ -92,17 +122,38 @@ func SetupRoutes(
 			companies.POST("", companyHandler.Create)
 		}
 
+		payees := api.Group("/payees")
+		payees.Use(auth.Middleware(verifier, permissions))
+		{
+			payees.GET("", payeeHandler.GetAll)
+			payees.POST("", payeeHandler.Create)
+			payees.PATCH("/:id", payeeHandler.Update)
+			payees.DELETE("/:id", payeeHandler.Delete)
+		}
+
+		cards := api.Group("/cards")
+		cards.Use(auth.Middleware(verifier, permissions))
+		{
+			cards.POST("/request", auth.RequireIdentityType(auth.IdentityClient), cardHandler.RequestCard)
+			cards.POST("/request/confirm", auth.RequireIdentityType(auth.IdentityClient), cardHandler.ConfirmCardRequest)
+			cards.PUT("/:cardId/block", auth.RequireIdentityType(auth.IdentityClient, auth.IdentityEmployee), cardHandler.BlockCard)
+			cards.PUT("/:cardId/unblock", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.UnblockCard)
+			cards.PUT("/:cardId/deactivate", auth.RequireIdentityType(auth.IdentityEmployee), cardHandler.DeactivateCard)
+    }
+    
 		exchange := api.Group("/exchange")
 		{
 			exchange.GET("/rates", exchangeHandler.GetRates)
 			exchange.GET("/calculate", exchangeHandler.Calculate)
-    }
-    
-		payments := api.Group("/payments")
-		payments.Use(auth.Middleware(verifier, permissions))
+		}
+
+
+		clientLoans := api.Group("/client/:client_id/loans")
+		clientLoans.Use(auth.Middleware(verifier, permissions))
 		{
-			payments.POST("", paymentHandler.CreatePayment)
-			payments.POST("/:id/verify", paymentHandler.VerifyPayment)
+			clientLoans.GET("", loanHandler.GetLoans)
+			clientLoans.GET("/:loan_id", loanHandler.GetLoanByID)
+			clientLoans.POST("/request", loanHandler.SubmitLoanRequest)
 		}
 	}
 }
