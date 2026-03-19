@@ -6,10 +6,11 @@ import (
 	"banking-service/internal/model"
 	"banking-service/internal/repository"
 	"bytes"
+	"common/pkg/auth"
 	"common/pkg/errors"
 	"context"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/go-pdf/fpdf"
 )
@@ -238,6 +239,15 @@ func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code, autho
 		return nil, errors.BadRequestErr("payment already processed")
 	}
 
+	authCtx := auth.GetAuthFromContext(ctx)
+	payerAccount, err := s.accountRepo.FindByAccountNumber(ctx, transaction.PayerAccountNumber)
+	if err != nil {
+		return nil, errors.NotFoundErr("payer account not found")
+	}
+	if payerAccount.ClientID != *authCtx.ClientID {
+		return nil, errors.ForbiddenErr("cannot verify payment for another client")
+	}
+
 	secret, err := s.mobileSecretClient.GetMobileSecret(ctx, authorizationHeader)
 	if err != nil {
 		return nil, errors.ServiceUnavailableErr(err)
@@ -255,5 +265,3 @@ func (s *PaymentService) VerifyPayment(ctx context.Context, id uint, code, autho
 
 	return payment, nil
 }
-
-

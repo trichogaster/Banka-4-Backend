@@ -60,10 +60,6 @@ func (h *ClientHandler) Register(c *gin.Context) {
 // @Router /api/secret-mobile [get]
 func (h *ClientHandler) GetMobileSecret(c *gin.Context) {
 	authCtx := auth.GetAuth(c)
-	if authCtx == nil || authCtx.ClientID == nil {
-		c.Error(errors.ForbiddenErr("client access required"))
-		return
-	}
 
 	secret, err := h.service.GetMobileVerificationSecret(c.Request.Context(), *authCtx.ClientID)
 	if err != nil {
