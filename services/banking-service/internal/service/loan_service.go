@@ -179,8 +179,6 @@ func (s *LoanService) GetLoanRequests(ctx context.Context, query *dto.ListLoanRe
 	return response, total, nil
 }
 
-// ApproveLoanRequest odobrava zahtev, prebacuje iznos kredita na racun klijenta
-// i kreira aktivni Loan entitet sa svim ratama
 func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 	request, err := s.loanRepo.FindByID(ctx, id)
 	if err != nil {
@@ -189,12 +187,10 @@ func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 	if request == nil {
 		return errors.NotFoundErr("loan request not found")
 	}
-	// obradjujemo samo zahteve koji nisu obradjeni
 	if request.Status != model.LoanRequestPending {
 		return errors.BadRequestErr("loan request is not pending")
 	}
 
-	// pronalazimo racun klijenta da bismo znali valutu
 	clientAccount, err := s.accountRepo.FindByAccountNumber(ctx, request.AccountNumber)
 	if err != nil {
 		return errors.InternalErr(err)
@@ -203,7 +199,6 @@ func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 		return errors.BadRequestErr("client account not found")
 	}
 
-	// pronalazimo bankovni racun u istoj valuti
 	bankAccountNumber, ok := BankAccounts[clientAccount.Currency.Code]
 	if !ok {
 		return errors.BadRequestErr("no bank account for this currency")
@@ -221,7 +216,6 @@ func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 		return errors.BadRequestErr("insufficient bank funds to approve loan")
 	}
 
-	// kreiramo transakciju: banka -> klijent
 	transaction := &model.Transaction{
 		PayerAccountNumber:     bankAccountNumber,
 		RecipientAccountNumber: request.AccountNumber,
@@ -244,19 +238,15 @@ func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 		return errors.InternalErr(err)
 	}
 
-	// prva rata dospeva mesec dana od odobravanja
 	now := time.Now()
 	firstInstallmentDate := time.Date(now.Year(), now.Month()+1, now.Day(), 0, 0, 0, 0, time.UTC)
 
 	loan := &model.Loan{
 		LoanRequestID:       request.ID,
-		AccountNumber:       request.AccountNumber,
-		ClientID:            request.ClientID,
-		TotalAmount:         request.Amount,
-		RemainingDebt:       request.Amount,
+		TransactionID:       &transaction.TransactionID,
 		MonthlyInstallment:  request.MonthlyInstallment,
 		InterestRate:        request.CalculatedRate,
-		IsVariableRate:      false, // po defaultu fiksna kamata
+		IsVariableRate:      false,
 		RepaymentPeriod:     request.RepaymentPeriod,
 		PaidInstallments:    0,
 		StartDate:           now,
@@ -267,7 +257,6 @@ func (s *LoanService) ApproveLoanRequest(ctx context.Context, id uint) error {
 		return errors.InternalErr(err)
 	}
 
-	// kreiramo sve rate unapred kako bi cron mogao da ih procesira
 	installments := make([]model.LoanInstallment, request.RepaymentPeriod)
 	for i := 0; i < request.RepaymentPeriod; i++ {
 		dueDate := time.Date(now.Year(), now.Month()+time.Month(i+1), now.Day(), 0, 0, 0, 0, time.UTC)

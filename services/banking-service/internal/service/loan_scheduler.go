@@ -42,15 +42,12 @@ func NewLoanScheduler(
 	}
 }
 
-// Start pokrece dve goroutine: dnevni cron za naplatu rata i mesecni cron
-// za azuriranje varijabilnih kamatnih stopa
 func (s *LoanScheduler) Start(ctx context.Context) {
 	go s.runDailyInstallmentJob(ctx)
 	go s.runMonthlyRateAdjustmentJob(ctx)
 }
 
 func (s *LoanScheduler) runDailyInstallmentJob(ctx context.Context) {
-	// pokrecemo odmah pri startu, a zatim cekamo sledeci dan u ponoc
 	s.processDueInstallments(ctx)
 	s.processRetryInstallments(ctx)
 
@@ -68,7 +65,6 @@ func (s *LoanScheduler) runDailyInstallmentJob(ctx context.Context) {
 	}
 }
 
-// processDueInstallments trazi sve PENDING rate ciji je DueDate danas ili ranije
 func (s *LoanScheduler) processDueInstallments(ctx context.Context) {
 	now := time.Now()
 	log.Printf("[LoanScheduler] processDueInstallments started at %s", now.Format(time.RFC3339))
@@ -86,7 +82,6 @@ func (s *LoanScheduler) processDueInstallments(ctx context.Context) {
 	log.Printf("[LoanScheduler] processDueInstallments done, processed %d installments", len(installments))
 }
 
-// processRetryInstallments trazi RETRYING rate kojima je dosao retry_at
 func (s *LoanScheduler) processRetryInstallments(ctx context.Context) {
 	now := time.Now()
 	log.Printf("[LoanScheduler] processRetryInstallments started at %s", now.Format(time.RFC3339))
@@ -104,17 +99,15 @@ func (s *LoanScheduler) processRetryInstallments(ctx context.Context) {
 	log.Printf("[LoanScheduler] processRetryInstallments done, processed %d installments", len(installments))
 }
 
-// processInstallment pokusava naplatu jedne rate
 func (s *LoanScheduler) processInstallment(ctx context.Context, installment *model.LoanInstallment) {
 	loan := &installment.Loan
 
-	account, err := s.accountRepo.FindByAccountNumber(ctx, loan.AccountNumber)
+	account, err := s.accountRepo.FindByAccountNumber(ctx, loan.LoanRequest.AccountNumber)
 	if err != nil || account == nil {
 		log.Printf("[LoanScheduler] account not found for loan %d: %v", loan.ID, err)
 		return
 	}
 
-	// proveravamo da li ima dovoljno sredstava
 	if account.AvailableBalance < installment.Amount {
 		log.Printf("[LoanScheduler] installment %d payment failed: insufficient funds", installment.ID)
 		s.onInstallmentFailed(ctx, installment, loan)
@@ -127,21 +120,14 @@ func (s *LoanScheduler) processInstallment(ctx context.Context, installment *mod
 		return
 	}
 
-	bankAccount, err := s.accountRepo.FindByAccountNumber(ctx, bankAccountNumber)
-	if err != nil || bankAccount == nil {
-		log.Printf("[LoanScheduler] bank account not found: %v", err)
-		return
-	}
-
-	// kreiramo transaction record
 	transaction := &model.Transaction{
-		PayerAccountNumber:     loan.AccountNumber,
+		PayerAccountNumber:     loan.LoanRequest.AccountNumber,
 		RecipientAccountNumber: bankAccountNumber,
 		StartAmount:            installment.Amount,
 		StartCurrencyCode:      account.Currency.Code,
 		EndAmount:              installment.Amount,
 		EndCurrencyCode:        account.Currency.Code,
-		Status:                 model.TransactionCompleted,
+		Status:                 model.TransactionProcessing,
 	}
 
 	if err := s.txRepo.Create(ctx, transaction); err != nil {
@@ -149,26 +135,21 @@ func (s *LoanScheduler) processInstallment(ctx context.Context, installment *mod
 		return
 	}
 
-	// direktno azuriramo balanse
-	model.UpdateBalances(account, -installment.Amount)
-	model.UpdateBalances(bankAccount, installment.Amount)
-
-	if err := s.accountRepo.UpdateBalance(ctx, account); err != nil {
-		log.Printf("[LoanScheduler] failed to update client balance for installment %d: %v", installment.ID, err)
-		return
-	}
-	if err := s.accountRepo.UpdateBalance(ctx, bankAccount); err != nil {
-		log.Printf("[LoanScheduler] failed to update bank balance for installment %d: %v", installment.ID, err)
+	if err := s.txProcessor.ProcessLoanInstallment(ctx, transaction.TransactionID); err != nil {
+		log.Printf("[LoanScheduler] installment %d payment failed: %v", installment.ID, err)
+		s.onInstallmentFailed(ctx, installment, loan)
 		return
 	}
 
-	s.onInstallmentPaid(ctx, installment, loan)
+	s.onInstallmentPaid(ctx, installment, loan, transaction.TransactionID)
 }
-func (s *LoanScheduler) onInstallmentPaid(ctx context.Context, installment *model.LoanInstallment, loan *model.Loan) {
+
+func (s *LoanScheduler) onInstallmentPaid(ctx context.Context, installment *model.LoanInstallment, loan *model.Loan, transactionID uint) {
 	now := time.Now()
 	installment.Status = model.InstallmentStatusPaid
 	installment.PaidAt = &now
 	installment.RetryAt = nil
+	installment.TransactionID = &transactionID
 
 	if err := s.loanRepo.UpdateInstallment(ctx, installment); err != nil {
 		log.Printf("[LoanScheduler] UpdateInstallment (paid) error: %v", err)
@@ -181,7 +162,6 @@ func (s *LoanScheduler) onInstallmentPaid(ctx context.Context, installment *mode
 	}
 	loan.PaidInstallments++
 
-	// ako je ovo bila poslednja rata, zatvaramo kredit
 	if loan.PaidInstallments >= loan.RepaymentPeriod {
 		loan.Status = model.LoanStatusCompleted
 		loan.NextInstallmentDate = time.Time{}
@@ -196,9 +176,7 @@ func (s *LoanScheduler) onInstallmentPaid(ctx context.Context, installment *mode
 	log.Printf("[LoanScheduler] installment %d paid, loan %d remaining debt: %.2f", installment.ID, loan.ID, loan.RemainingDebt)
 }
 
-// onInstallmentFailed postavlja retry ili trajno UNPAID i salje notifikaciju klijentu
 func (s *LoanScheduler) onInstallmentFailed(ctx context.Context, installment *model.LoanInstallment, loan *model.Loan) {
-	// ako je vec bila RETRYING, oznacavamo kao trajno neplacenu
 	if installment.Status == model.InstallmentStatusRetrying {
 		installment.Status = model.InstallmentStatusUnpaid
 		installment.RetryAt = nil
@@ -218,11 +196,10 @@ func (s *LoanScheduler) onInstallmentFailed(ctx context.Context, installment *mo
 	s.sendFailureNotification(ctx, loan, installment)
 }
 
-// sendFailureNotification dohvata email klijenta iz user-service-a i salje obavestenje
 func (s *LoanScheduler) sendFailureNotification(ctx context.Context, loan *model.Loan, installment *model.LoanInstallment) {
-	clientResp, err := s.userClient.GetClientByID(ctx, loan.ClientID)
+	clientResp, err := s.userClient.GetClientByID(ctx, loan.LoanRequest.ClientID)
 	if err != nil {
-		log.Printf("[LoanScheduler] GetClientByID failed for client %d: %v", loan.ClientID, err)
+		log.Printf("[LoanScheduler] GetClientByID failed for client %d: %v", loan.LoanRequest.ClientID, err)
 		return
 	}
 
@@ -230,7 +207,6 @@ func (s *LoanScheduler) sendFailureNotification(ctx context.Context, loan *model
 	body := "Naplata rate vašeg kredita nije bila uspešna zbog nedovoljnih sredstava na računu. " +
 		"Molimo vas da obezbedite sredstva. Novi pokušaj će biti izvršen u roku od 72 sata."
 
-	// ako je retry vec bio neuspesan, saljemo ozbiljnije obavestenje
 	if installment.Status == model.InstallmentStatusUnpaid {
 		subject = "Rata kredita nije naplaćena"
 		body = "Uprkos ponovljenom pokušaju, naplata rate vašeg kredita nije bila uspešna. " +
@@ -259,13 +235,11 @@ func (s *LoanScheduler) runMonthlyRateAdjustmentJob(ctx context.Context) {
 	}
 }
 
-// nextMidnight vraca vreme sledece ponoci (00:00:00 sutra)
 func nextMidnight() time.Time {
 	now := time.Now()
 	return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 }
 
-// nextFirstOfMonth vraca 1. u sledecem mesecu u 01:00
 func nextFirstOfMonth() time.Time {
 	now := time.Now()
 	return time.Date(now.Year(), now.Month()+1, 1, 1, 0, 0, 0, now.Location())

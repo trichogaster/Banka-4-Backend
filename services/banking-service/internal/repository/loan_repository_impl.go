@@ -110,21 +110,19 @@ func (r *loanRepository) CreateInstallments(ctx context.Context, installments []
 	return r.db.WithContext(ctx).Create(&installments).Error
 }
 
-// FindDueInstallments vraca sve PENDING rate ciji je DueDate <= date
 func (r *loanRepository) FindDueInstallments(ctx context.Context, date time.Time) ([]model.LoanInstallment, error) {
 	var installments []model.LoanInstallment
 	err := r.db.WithContext(ctx).
-		Preload("Loan").
+		Preload("Loan.LoanRequest").
 		Where("status = ? AND due_date <= ?", model.InstallmentStatusPending, date).
 		Find(&installments).Error
 	return installments, err
 }
 
-// FindRetryInstallments vraca rate sa statusom RETRYING ciji je retry_at <= now
 func (r *loanRepository) FindRetryInstallments(ctx context.Context, now time.Time) ([]model.LoanInstallment, error) {
 	var installments []model.LoanInstallment
 	err := r.db.WithContext(ctx).
-		Preload("Loan").
+		Preload("Loan.LoanRequest").
 		Where("status = ? AND retry_at <= ?", model.InstallmentStatusRetrying, now).
 		Find(&installments).Error
 	return installments, err
