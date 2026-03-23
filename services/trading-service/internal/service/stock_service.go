@@ -12,7 +12,10 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
 )
 
-const maxCallsPerMinute = 55
+const (
+	maxCallsPerMinute    = 55
+	priceRefreshInterval = 15 * time.Minute
+)
 
 type StockService struct {
 	listingRepo repository.ListingRepository
@@ -32,7 +35,41 @@ func NewStockService(
 	}
 }
 
-func (s *StockService) SeedStocks(limit int) error {
+func (s *StockService) Initialize(ctx context.Context) {
+	count, err := s.listingRepo.Count(ctx)
+	if err != nil {
+		log.Printf("[seed] failed to count listings: %v", err)
+		return
+	}
+
+	if count > 0 {
+		log.Printf("[seed] listings already exist (%d), skipping seed", count)
+		return
+	}
+
+	if err := s.SeedStocks(ctx, 10); err != nil {
+		log.Printf("[seed] failed: %v", err)
+	}
+}
+
+func (s *StockService) StartBackgroundRefresh(ctx context.Context) {
+	ticker := time.NewTicker(priceRefreshInterval)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				if err := s.RefreshPrices(ctx); err != nil {
+					log.Println("[refresh] failed:", err)
+				}
+			}
+		}
+	}()
+}
+
+func (s *StockService) SeedStocks(ctx context.Context, limit int) error {
 	symbols, err := s.client.GetSymbols("US")
 	if err != nil {
 		return fmt.Errorf("failed to fetch symbols: %w", err)
@@ -123,30 +160,8 @@ func (s *StockService) SeedStocks(limit int) error {
 	log.Printf("[seed] done. seeded %d stocks.", count)
 	return nil
 }
-func (s *StockService) Initialize(ctx context.Context) {
-	var count int64
-	if err := s.listingRepo.Count(&count); err != nil {
-		log.Printf("[seed] failed to count listings: %v", err)
-		return
-	}
-	if count == 0 {
-		if err := s.SeedStocks(10); err != nil {
-			log.Printf("[seed] failed: %v", err)
-		}
-	}
-}
 
-func (s *StockService) StartBackgroundRefresh(ctx context.Context) {
-	var count int64
-	_ = s.listingRepo.Count(&count)
-
-	if count == 0 {
-		go s.StartRefreshLoopNoInitial()
-	} else {
-		go s.StartRefreshLoop()
-	}
-}
-func (s *StockService) RefreshPrices() error {
+func (s *StockService) RefreshPrices(ctx context.Context) error {
 	listings, err := s.listingRepo.FindAll()
 	if err != nil {
 		return fmt.Errorf("failed to load listings: %w", err)
@@ -190,30 +205,4 @@ func (s *StockService) RefreshPrices() error {
 
 	log.Printf("[refresh] done")
 	return nil
-}
-
-func (s *StockService) StartRefreshLoopNoInitial() {
-	ticker := time.NewTicker(15 * time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if err := s.RefreshPrices(); err != nil {
-			log.Printf("[refresh] failed: %v", err)
-		}
-	}
-}
-
-func (s *StockService) StartRefreshLoop() {
-	ticker := time.NewTicker(15 * time.Minute)
-	defer ticker.Stop()
-
-	if err := s.RefreshPrices(); err != nil {
-		log.Printf("[refresh] initial run failed: %v", err)
-	}
-
-	for range ticker.C {
-		if err := s.RefreshPrices(); err != nil {
-			log.Printf("[refresh] failed: %v", err)
-		}
-	}
 }

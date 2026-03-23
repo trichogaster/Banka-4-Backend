@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"gorm.io/gorm"
 )
@@ -34,6 +36,11 @@ func (r *listingRepository) UpdatePriceAndAsk(listing *model.Listing, price, ask
 		Ask:   ask,
 	}).Error
 }
-func (r *listingRepository) Count(count *int64) error {
-	return r.db.Model(&model.Listing{}).Count(count).Error
+
+func (r *listingRepository) Count(ctx context.Context) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&model.Listing{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
