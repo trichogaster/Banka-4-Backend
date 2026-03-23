@@ -16,12 +16,12 @@ func NewExchangeService(repo *repository.ExchangeRepository) *ExchangeService {
 	return &ExchangeService{repo: repo}
 }
 
-func (s *ExchangeService) GetAll(ctx context.Context) ([]model.Exchange, error) {
-	exchanges, err := s.repo.FindAll(ctx)
+func (s *ExchangeService) GetAll(ctx context.Context, page, pageSize int) ([]model.Exchange, int64, error) {
+	exchanges, total, err := s.repo.FindAll(ctx, page, pageSize)
 	if err != nil {
-		return nil, errors.InternalErr(err)
+		return nil, 0, errors.InternalErr(err)
 	}
-	return exchanges, nil
+	return exchanges, total, nil
 }
 
 func (s *ExchangeService) ToggleTradingEnabled(ctx context.Context, micCode string) (*model.Exchange, error) {

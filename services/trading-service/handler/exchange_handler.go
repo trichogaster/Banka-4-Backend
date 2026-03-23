@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/errors"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/service"
 )
@@ -19,19 +20,41 @@ func NewExchangeHandler(service *service.ExchangeService) *ExchangeHandler {
 
 // GetAll godoc
 // @Summary Get all exchanges
-// @Description Returns a list of all stock exchanges
+// @Description Returns a paginated list of all stock exchanges
 // @Tags exchange
 // @Produce json
-// @Success 200 {array} dto.ExchangeResponse
+// @Param page query int false "Page number"
+// @Param page_size query int false "Page size"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/exchange [get]
 func (h *ExchangeHandler) GetAll(c *gin.Context) {
-	exchanges, err := h.service.GetAll(c.Request.Context())
+	var query dto.ListExchangesQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		c.Error(errors.BadRequestErr(err.Error()))
+		return
+	}
+
+	if query.Page <= 0 {
+		query.Page = 1
+	}
+	if query.PageSize <= 0 {
+		query.PageSize = 10
+	}
+
+	exchanges, total, err := h.service.GetAll(c.Request.Context(), query.Page, query.PageSize)
 	if err != nil {
 		c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.ToExchangeResponseList(exchanges))
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":      dto.ToExchangeResponseList(exchanges),
+		"total":     total,
+		"page":      query.Page,
+		"page_size": query.PageSize,
+	})
 }
 
 // ToggleTradingEnabled godoc

@@ -9,7 +9,7 @@ type ExchangeResponse struct {
 	MicCode        string `json:"micCode"`
 	Polity         string `json:"polity"`
 	Currency       string `json:"currency"`
-	TimeZone       string `json:"timeZone"`
+	TimeZone       int    `json:"timeZone"`
 	OpenTime       string `json:"openTime"`
 	CloseTime      string `json:"closeTime"`
 	TradingEnabled bool   `json:"tradingEnabled"`
