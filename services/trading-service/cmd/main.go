@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/client"
@@ -10,6 +9,7 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/permission"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/repository"
+	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/seed"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/server"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/service"
 	"go.uber.org/fx"
@@ -53,6 +53,16 @@ func main() {
 				return client.NewExchangeRateClient(cfg.ExchangeRateAPIKey)
 			},
 			service.NewForexService,
+
+			func(cfg *config.Configuration) *client.StockClient {
+				return client.NewStockClient(cfg.FinnhubAPIKey)
+			},
+			repository.NewListingRepository,
+			repository.NewStockRepository,
+			service.NewStockService,
+			repository.NewExchangeRepository,
+			service.NewExchangeService,
+			handler.NewExchangeHandler,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
@@ -60,13 +70,20 @@ func main() {
 		fx.Invoke(func(db *gorm.DB) {
 			if err := db.AutoMigrate(
 				&model.Listing{},
+				&model.Stock{},
 				&model.ListingDailyPriceInfo{},
-				&model.ForexPair{},
-			); err != nil {
-				log.Fatalf("AutoMigrate failed: %v", err)
-			} else {
-				log.Println("AutoMigrate successful ✅")
-			}
+				&model.Exchange{},
+        &model.ForexPair{},
+			)
+		}),
+		fx.Invoke(func(svc *service.StockService) {
+			go func() {
+				svc.Initialize(context.Background())
+				svc.StartBackgroundRefresh()
+			}()
+		}),
+		fx.Invoke(func(db *gorm.DB) error {
+			return seed.RunExchangeSeed(db)
 		}),
 		fx.Invoke(server.NewServer),
 		fx.Invoke(func(lifecycle fx.Lifecycle, forexService *service.ForexService) {
@@ -74,7 +91,6 @@ func main() {
 				OnStart: func(ctx context.Context) error {
 					forexService.Initialize(ctx)
 					forexService.StartBackgroundRefresh(ctx)
-					log.Println("ForexService background refresh started ✅")
 					return nil
 				},
 			})
