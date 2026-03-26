@@ -135,16 +135,22 @@ func (s *LoanScheduler) processInstallment(ctx context.Context, installment *mod
 
 	if err := s.txManager.WithinTransaction(ctx, func(txCtx context.Context) error {
 		if err := s.txRepo.Create(txCtx, transaction); err != nil {
+			log.Printf("[LoanScheduler] failed to create transaction for installment %d: %v", installment.ID, err)
 			return err
 		}
 
 		if err := s.txProcessor.ProcessLoanInstallment(txCtx, transaction.TransactionID); err != nil {
+			log.Printf("[LoanScheduler] installment %d payment failed: %v", installment.ID, err)
 			return err
 		}
 
-		return s.onInstallmentPaid(txCtx, installment, loan, transaction.TransactionID)
+		if err := s.onInstallmentPaid(txCtx, installment, loan, transaction.TransactionID); err != nil {
+			log.Printf("[LoanScheduler] installment %d payment failed: %v", installment.ID, err)
+			return err
+		}
+
+		return nil
 	}); err != nil {
-		log.Printf("[LoanScheduler] installment %d payment failed: %v", installment.ID, err)
 		s.onInstallmentFailed(ctx, installment, loan)
 		return
 	}
