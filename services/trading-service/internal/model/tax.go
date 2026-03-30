@@ -13,7 +13,7 @@ const (
 
 type AccumulatedTax struct {
 	AccumulatedTaxID uint    `gorm:"primaryKey"`
-	AccountID        string  `gorm:"not null;uniqueIndex"`
+	AccountNumber    string  `gorm:"not null;uniqueIndex"`
 	TaxOwedRSD       float64 `gorm:"not null;default:0"`
 	LastUpdatedAt    time.Time
 	LastClearedAt    *time.Time
@@ -21,10 +21,10 @@ type AccumulatedTax struct {
 
 type TaxCollection struct {
 	TaxCollectionID   uint      `gorm:"primaryKey"`
-	AccountID         string    `gorm:"not null"`
+	AccountNumber     string    `gorm:"not null"`
 	TaxOwedRSD        float64   `gorm:"not null"`
-	Status            TaxStatus `gorm:"type:varchar(20);not null"`
-	FailureReason     string    `gorm:"type:text"`
+	Status            TaxStatus `gorm:"type:varchar(20);not null;check:status IN ('COLLECTED','FAILED')"`
+	FailureReason     *string   `gorm:"type:text"`
 	TaxingPeriodStart time.Time `gorm:"not null"`
 	TaxingPeriodEnd   *time.Time
 	TriggeredByID     *uint
