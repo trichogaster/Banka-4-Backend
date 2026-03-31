@@ -47,6 +47,18 @@ func (r *listingRepository) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
+func joinLatestDaily(q *gorm.DB) *gorm.DB {
+	return q.Joins(`
+		LEFT JOIN listing_daily_price_infos AS ldpi
+		ON ldpi.listing_id = listings.listing_id
+		AND ldpi.date = (
+			SELECT MAX(d.date)
+			FROM listing_daily_price_infos d
+			WHERE d.listing_id = listings.listing_id
+		)
+	`)
+}
+
 func applyListingFilters(q *gorm.DB, filter ListingFilter) *gorm.DB {
 	if filter.Search != "" {
 		like := "%" + filter.Search + "%"
@@ -67,17 +79,18 @@ func applyListingFilters(q *gorm.DB, filter ListingFilter) *gorm.DB {
 	if filter.AskMax > 0 {
 		q = q.Where("listings.ask <= ?", filter.AskMax)
 	}
+	// FIX: bid i volume su u listing_daily_price_infos, ne u listings
 	if filter.BidMin > 0 {
-		q = q.Where("listings.bid >= ?", filter.BidMin)
+		q = q.Where("ldpi.bid >= ?", filter.BidMin)
 	}
 	if filter.BidMax > 0 {
-		q = q.Where("listings.bid <= ?", filter.BidMax)
+		q = q.Where("ldpi.bid <= ?", filter.BidMax)
 	}
 	if filter.VolumeMin > 0 {
-		q = q.Where("listings.volume >= ?", filter.VolumeMin)
+		q = q.Where("ldpi.volume >= ?", filter.VolumeMin)
 	}
 	if filter.VolumeMax > 0 {
-		q = q.Where("listings.volume <= ?", filter.VolumeMax)
+		q = q.Where("ldpi.volume <= ?", filter.VolumeMax)
 	}
 	return q
 }
@@ -86,7 +99,7 @@ func sortColumn(filter ListingFilter) string {
 	col := "listings.price"
 	switch filter.SortBy {
 	case "volume":
-		col = "listings.volume"
+		col = "ldpi.volume"
 	case "maintenance_margin":
 		col = "listings.maintenance_margin"
 	}
@@ -105,6 +118,7 @@ func (r *listingRepository) FindStocks(ctx context.Context, filter ListingFilter
 		Model(&model.Listing{}).
 		Joins("INNER JOIN stocks ON stocks.listing_id = listings.listing_id")
 
+	db = joinLatestDaily(db)
 	db = applyListingFilters(db, filter)
 
 	if err := db.Count(&count).Error; err != nil {
@@ -132,10 +146,14 @@ func (r *listingRepository) FindFutures(ctx context.Context, filter ListingFilte
 		Model(&model.Listing{}).
 		Joins("INNER JOIN futures_contracts ON futures_contracts.ticker = listings.ticker")
 
+	db = joinLatestDaily(db)
 	db = applyListingFilters(db, filter)
 
+	// FIX: zamena PostgreSQL-specifičnog ::date cast-a sa date range
 	if filter.SettlementDate != nil {
-		db = db.Where("futures_contracts.settlement_date::date = ?", filter.SettlementDate.Format("2006-01-02"))
+		start := filter.SettlementDate.Truncate(24 * time.Hour)
+		end := start.Add(24 * time.Hour)
+		db = db.Where("futures_contracts.settlement_date >= ? AND futures_contracts.settlement_date < ?", start, end)
 	}
 
 	if err := db.Count(&count).Error; err != nil {
@@ -162,10 +180,13 @@ func (r *listingRepository) FindOptions(ctx context.Context, filter ListingFilte
 		Model(&model.Listing{}).
 		Joins("INNER JOIN options ON options.listing_id = listings.listing_id")
 
+	db = joinLatestDaily(db)
 	db = applyListingFilters(db, filter)
 
 	if filter.SettlementDate != nil {
-		db = db.Where("options.settlement_date::date = ?", filter.SettlementDate.Format("2006-01-02"))
+		start := filter.SettlementDate.Truncate(24 * time.Hour)
+		end := start.Add(24 * time.Hour)
+		db = db.Where("options.settlement_date >= ? AND options.settlement_date < ?", start, end)
 	}
 
 	if err := db.Count(&count).Error; err != nil {
