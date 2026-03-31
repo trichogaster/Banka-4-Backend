@@ -160,7 +160,14 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ow
 			avgBuyPrice = agg.totalBuyValue / agg.totalBuyQty
 		}
 
+		const taxRate = 0.15
+
 		profit := (agg.currentPrice - avgBuyPrice) * agg.netAmount
+
+		tax := 0.0
+		if profit > 0 {
+			tax = profit * taxRate
+		}
 
 		result = append(result, dto.PortfolioAssetResponse{
 			Type:              m.assetType,
@@ -169,6 +176,7 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, identityID uint, ow
 			PricePerUnit:      agg.currentPrice,
 			LastModified:      agg.lastModified,
 			Profit:            profit,
+			TaxAmount:         tax,
 			OutstandingShares: m.outstandingShares,
 		})
 	}
