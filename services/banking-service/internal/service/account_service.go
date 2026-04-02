@@ -34,6 +34,7 @@ func NewAccountService(
 	mobileSecretClient client.MobileSecretClient,
 	exchangeService CurrencyConverter,
 	txManager repository.TransactionManager,
+	mailer Mailer,
 ) *AccountService {
 	return &AccountService{
 		repo:               repo,
@@ -44,6 +45,7 @@ func NewAccountService(
 		mobileSecretClient: mobileSecretClient,
 		exchangeService:    exchangeService,
 		txManager:          txManager,
+		mailer:             mailer,
 	}
 }
 
@@ -167,18 +169,18 @@ func (s *AccountService) Create(ctx context.Context, req dto.CreateAccountReques
 		}
 
 		if err := s.sendAccountCreationEmail(ctx, account); err != nil {
-			return account, errors.ServiceUnavailableErr(err)
+			return nil, err
 		}
 
 		return account, nil
 	}
 
 	if err := s.repo.Create(ctx, account); err != nil {
-		return nil, errors.InternalErr(err)
+		return nil, err
 	}
 
 	if err := s.sendAccountCreationEmail(ctx, account); err != nil {
-		return account, errors.ServiceUnavailableErr(err)
+		return nil, errors.InternalErr(err)
 	}
 
 	return account, nil
@@ -191,12 +193,12 @@ func (s *AccountService) sendAccountCreationEmail(ctx context.Context, account *
 	}
 
 	body := fmt.Sprintf(
-		"Hello %s,\n\nA new %s account %s has been created successfully.\n\n"+
-			"Account name: %s\nAccount type: %s\nAccount subtype: %s\nCurrency: %s",
+		"Hello %s,\n\nA new %s account has been created successfully.\n\n"+
+			"Account name: %s\nAccount number: %s\nAccount type: %s\nAccount subtype: %s\nCurrency: %s",
 		defaultContactName(client.FullName),
 		account.AccountKind,
-		account.AccountNumber,
 		account.Name,
+		account.AccountNumber,
 		account.AccountType,
 		account.Subtype,
 		account.Currency.Code,
