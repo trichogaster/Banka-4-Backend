@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/trading-service/internal/model"
 )
@@ -11,4 +12,7 @@ type ForexRepository interface {
 	Upsert(ctx context.Context, pair model.ForexPair) error
 	FindAll(ctx context.Context, filter ListingFilter) ([]model.ForexPair, int64, error)
 	FindByListingIDs(ctx context.Context, listingIDs []uint) ([]model.ForexPair, error)
+	CreateDailyPriceInfo(ctx context.Context, info *model.ForexPairDailyPriceInfo) error
+	FindLastDailyPriceInfo(ctx context.Context, forexPairID uint, beforeDate time.Time) (*model.ForexPairDailyPriceInfo, error)
+	FindAllForexPairs(ctx context.Context) ([]model.ForexPair, error)
 }
