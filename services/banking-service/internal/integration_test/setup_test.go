@@ -173,6 +173,8 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&model.LoanInstallment{},
 		&model.VerificationToken{},
 		&model.ExchangeRate{},
+		&model.Loan{},
+		&model.LoanInstallment{},
 	); err != nil {
 		t.Fatalf("auto migrate test schema: %v", err)
 	}

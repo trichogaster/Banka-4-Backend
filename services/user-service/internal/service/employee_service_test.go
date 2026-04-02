@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/auth"
 	"github.com/RAF-SI-2025/Banka-4-Backend/common/pkg/permission"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/dto"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/user-service/internal/model"
@@ -104,9 +105,15 @@ func TestRegister(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			admin := adminEmployee()
+			if tt.empRepo.byIDs == nil {
+				tt.empRepo.byIDs = map[uint]*model.Employee{}
+			}
+			tt.empRepo.byIDs[admin.EmployeeID] = admin
+
 			svc := newEmployeeService(tt.empRepo, tt.identityRepo, &fakeActivationTokenRepo{}, tt.positionRepo, tt.mailer)
 
-			emp, err := svc.Register(context.Background(), req)
+			emp, err := svc.Register(withAuth(context.Background(), admin.IdentityID, auth.IdentityEmployee), req)
 
 			if tt.expectErr {
 				require.Error(t, err)
@@ -130,10 +137,15 @@ func TestUpdateEmployee(t *testing.T) {
 	existing := activeEmployee()
 	existing.PositionID = 1
 
-	existingAdmin := activeEmployee()
-	existingAdmin.Permissions = mapPermissions(existing.PositionID, permission.All)
+	existingAdmin := adminEmployee()
+	existingAdmin.EmployeeID = 4
+	existingAdmin.IdentityID = 4
+	existingAdmin.ActuaryInfo.EmployeeID = existingAdmin.EmployeeID
 
 	identity := activeIdentity()
+	actor := activeEmployee()
+	actor.EmployeeID = 9
+	actor.IdentityID = 9
 
 	req := &dto.UpdateEmployeeRequest{
 		FirstName:  ptr("John"),
@@ -155,15 +167,15 @@ func TestUpdateEmployee(t *testing.T) {
 	}{
 		{
 			name:         "successful update same email/username",
-			empRepo:      &fakeEmployeeRepo{byID: existing},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{existing.EmployeeID: existing, actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{byID: identity},
 			positionRepo: &fakePositionRepo{exists: true},
-			id:           1,
+			id:           existing.EmployeeID,
 			req:          req,
 		},
 		{
 			name:         "employee not found",
-			empRepo:      &fakeEmployeeRepo{byID: nil},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{},
 			positionRepo: &fakePositionRepo{},
 			id:           999,
@@ -174,20 +186,20 @@ func TestUpdateEmployee(t *testing.T) {
 		{
 			// TODO: Test for ability for other admins, or the admin themselves, to update their details?
 			name:         "employee is admin",
-			empRepo:      &fakeEmployeeRepo{byID: existingAdmin},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{existingAdmin.EmployeeID: existingAdmin, actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{byID: identity},
 			positionRepo: &fakePositionRepo{},
-			id:           2,
+			id:           existingAdmin.EmployeeID,
 			req:          req,
 			expectErr:    true,
 			errMsg:       "cannot modify admin",
 		},
 		{
 			name:         "email conflict",
-			empRepo:      &fakeEmployeeRepo{byID: existing},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{existing.EmployeeID: existing, actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{byID: identity, emailExists: true},
 			positionRepo: &fakePositionRepo{},
-			id:           1,
+			id:           existing.EmployeeID,
 			req: &dto.UpdateEmployeeRequest{
 				Email:    ptr("taken@example.com"),
 				Username: ptr("johndoe"),
@@ -197,10 +209,10 @@ func TestUpdateEmployee(t *testing.T) {
 		},
 		{
 			name:         "username conflict",
-			empRepo:      &fakeEmployeeRepo{byID: existing},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{existing.EmployeeID: existing, actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{byID: identity, usernameExists: true},
 			positionRepo: &fakePositionRepo{},
-			id:           1,
+			id:           existing.EmployeeID,
 			req: &dto.UpdateEmployeeRequest{
 				Email:    ptr("john@example.com"),
 				Username: ptr("taken"),
@@ -210,10 +222,10 @@ func TestUpdateEmployee(t *testing.T) {
 		},
 		{
 			name:         "invalid position",
-			empRepo:      &fakeEmployeeRepo{byID: existing},
+			empRepo:      &fakeEmployeeRepo{byIDs: map[uint]*model.Employee{existing.EmployeeID: existing, actor.EmployeeID: actor}},
 			identityRepo: &fakeIdentityRepo{byID: identity},
 			positionRepo: &fakePositionRepo{exists: false},
-			id:           1,
+			id:           existing.EmployeeID,
 			req: &dto.UpdateEmployeeRequest{
 				Email:      ptr("john@example.com"),
 				Username:   ptr("johndoe"),
@@ -228,7 +240,7 @@ func TestUpdateEmployee(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := newEmployeeService(tt.empRepo, tt.identityRepo, &fakeActivationTokenRepo{}, tt.positionRepo, &fakeMailer{})
 
-			result, err := svc.UpdateEmployee(context.Background(), tt.id, tt.req)
+			result, err := svc.UpdateEmployee(withAuth(context.Background(), actor.IdentityID, auth.IdentityEmployee), tt.id, tt.req)
 
 			if tt.expectErr {
 				require.Error(t, err)

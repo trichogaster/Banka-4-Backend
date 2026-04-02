@@ -15,6 +15,7 @@ import (
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/client"
 	clientgrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/client/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/config"
+	servicegrpc "github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/grpc"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/handler"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/model"
 	"github.com/RAF-SI-2025/Banka-4-Backend/services/banking-service/internal/permission"
@@ -98,6 +99,7 @@ func main() {
 			handler.NewTransferHandler,
 			handler.NewCardHandler,
 			handler.NewLoanHandler,
+			servicegrpc.NewBankingService,
 		),
 		fx.Invoke(func(cfg *config.Configuration) error {
 			return logging.Init(cfg.Env)
@@ -134,7 +136,11 @@ func main() {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					svc.Initialize(ctx)
-					svc.StartBackgroundRefresh(ctx)
+					svc.Start()
+					return nil
+				},
+				OnStop: func(ctx context.Context) error {
+					svc.Stop()
 					return nil
 				},
 			})
@@ -142,12 +148,16 @@ func main() {
 		fx.Invoke(func(lc fx.Lifecycle, scheduler *service.LoanScheduler) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
-					scheduler.Start(ctx)
+					scheduler.Start()
+					return nil
+				},
+				OnStop: func(ctx context.Context) error {
+					scheduler.Stop()
 					return nil
 				},
 			})
 		}),
-		fx.Invoke(server.NewServer),
+		fx.Invoke(server.NewServer, server.NewGRPCServer),
 	).Run()
 }
 
